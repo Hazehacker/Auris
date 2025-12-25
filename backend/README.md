@@ -1,31 +1,19 @@
-# `Auris`
-
-- 
+# `Name`
 
 ## 项目简介
 
-
+xxx
 
 ## 系统架构图
 
-![architecture](./documents/00、preview-pic/architecture.jpg)
+xxx
 
 ## 项目结构说明
-> `zero-one-psi`  
->
-> > `.gitignore` -- 忽略提交配置
-> >
-> > `README.md` -- 项目自述文件
-> >
-> > `documents` -- 环境搭建、编码规范、项目需求等等文档资源
-> >
-> > `psi-java` -- `Java`项目主体
-> >
-> > `psi-cpp` -- `C++`项目主体
-> >
-> > `psi-frontend` -- 前端项目主体
+
+xxx
 
 ## 软件架构
+xxx
 
 ### `Java`技术栈
 
@@ -35,8 +23,8 @@
 
 https://github.com/alibaba/spring-cloud-alibaba/wiki/%E7%89%88%E6%9C%AC%E8%AF%B4%E6%98%8E
 
-| 技术                     | 说明                   | 版本          | 备注                                                         |
-| ------------------------ | ---------------------- | ------------- | ------------------------------------------------------------ |
+| 技术                     | 说明                   | 版本            | 备注                                                         |
+| ------------------------ | ---------------------- |---------------| ------------------------------------------------------------ |
 | `Spring`                 | 容器                   | 5.2.15        | https://spring.io/                                           |
 | `Spring Web MVC`         | `MVC`框架              | 5.2.15        | https://docs.spring.io/spring/docs/current/spring-framework-reference/web.html |
 | `Beanvalidation`         | 实体属性校验           | 2.0.2         | https://beanvalidation.org/2.0-jsr380/<br>https://www.baeldung.com/spring-boot-bean-validation |
@@ -48,7 +36,7 @@ https://github.com/alibaba/spring-cloud-alibaba/wiki/%E7%89%88%E6%9C%AC%E8%AF%B4
 | `Hutool`                 | Java工具类库           | 5.8.3         | https://hutool.cn/docs/#/                                    |
 | `Knife4j`                | 接口描述语言           | 2.0.8         | https://gitee.com/xiaoym/knife4j                             |
 | `Nimbus JOSE JWT`        | `JSON Web Token`       | 8.21          | https://bitbucket.org/connect2id/nimbus-jose-jwt/wiki/Home   |
-| `Spring Boot`            | Spring快速集成脚手架   | 2.3.12        | https://spring.io/projects/spring-boot                       |
+| `Spring Boot`            | Spring快速集成脚手架   | 2.6.13        | https://spring.io/projects/spring-boot                       |
 | `Spring Cloud`           | 微服务框架             | `Hoxton.SR12` | https://spring.io/projects/spring-cloud                      |
 | `Spring Cloud Alibaba`   | 微服务框架             | 2.2.8         | https://github.com/alibaba/spring-cloud-alibaba/wiki         |
 | `Spring Cloud Security`  | 认证和授权框架         | 2.2.5         | https://spring.io/projects/spring-cloud-security             |
@@ -80,7 +68,6 @@ https://docs.spring.io/spring-data/mongodb/docs/current/reference/html/#requirem
 | `AJ-Captcha`               | 验证码插件             | 1.3.0  | https://ajcaptcha.beliefteam.cn/captcha-doc/                 |
 | `x-easypdf`                | `pdf`插件              | 2.12.2 | https://gitee.com/dromara/x-easypdf                          |
 
-### 
 
 ## 环境要求
 
@@ -109,12 +96,12 @@ https://docs.spring.io/spring-data/mongodb/docs/current/reference/html/#requirem
 
 ### 开发环境
 
-| 依赖环境  | 版本       | 备注                      |
-| --------- | ---------- | ------------------------- |
-| `Windows` | 10+        | 操作系统                  |
-| `JDK`     | 1.8.0_191+ | https://www.injdk.cn/     |
-| `NodeJS`  | 20.15.0    | https://nodejs.org/zh-cn/ |
-| `NPM`     | 8.19.2     | https://www.npmjs.com/    |
+| 依赖环境  | 版本      | 备注                      |
+| --------- |---------| ------------------------- |
+| `Windows` | 10+     | 操作系统                  |
+| `JDK`     | 17.0.9  | https://www.injdk.cn/     |
+| `NodeJS`  | 20.15.0 | https://nodejs.org/zh-cn/ |
+| `NPM`     | 8.19.2  | https://www.npmjs.com/    |
 
 ### 服务器环境
 
@@ -136,19 +123,19 @@ https://docs.spring.io/spring-data/mongodb/docs/current/reference/html/#requirem
 
 ## 部分功能预览图
 
-![01](./documents/00、preview-pic/01.png)
+![01](backend/documents/00、preview-pic/01.png)
 
-![02](./documents/00、preview-pic/02.png)
+![02](backend/documents/00、preview-pic/02.png)
 
-![03](./documents/00、preview-pic/03.png)
+![03](backend/documents/00、preview-pic/03.png)
 
-![04](./documents/00、preview-pic/04.png)
+![04](backend/documents/00、preview-pic/04.png)
 
-![05](./documents/00、preview-pic/05.png)
+![05](backend/documents/00、preview-pic/05.png)
 
-![06](./documents/00、preview-pic/06.png)
+![06](backend/documents/00、preview-pic/06.png)
 
-![07](./documents/00、preview-pic/07.png)
+![07](backend/documents/00、preview-pic/07.png)
 
 ## 特别鸣谢
 
@@ -161,6 +148,5 @@ https://docs.spring.io/spring-data/mongodb/docs/current/reference/html/#requirem
 - `api`：https://gitee.com/xiaoym/knife4j
 - `vue`：https://github.com/vuejs
 - `ui`：https://github.com/ElemeFE
-- `oatpp`：https://github.com/oatpp/oatpp
 
 同时也感谢其他没有明确写出来的开源组件提供给与维护者。
