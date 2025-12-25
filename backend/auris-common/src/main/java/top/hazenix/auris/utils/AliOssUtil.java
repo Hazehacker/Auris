@@ -1,4 +1,4 @@
-package top.hazenix.common.utils;
+package top.hazenix.auris.utils;
 
 import com.aliyun.oss.ClientException;
 import com.aliyun.oss.OSS;
@@ -8,7 +8,8 @@ import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-import top.hazenix.properties.AliOssProperties;
+import top.hazenix.auris.properties.AliOssProperties;
+
 
 import java.io.ByteArrayInputStream;
 import java.util.UUID;

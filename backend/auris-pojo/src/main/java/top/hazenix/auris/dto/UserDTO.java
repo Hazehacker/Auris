@@ -1,4 +1,4 @@
-package top.hazenix.dto;
+package top.hazenix.auris.dto;
 
 import lombok.Data;
 

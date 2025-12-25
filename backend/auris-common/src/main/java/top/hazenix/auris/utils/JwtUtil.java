@@ -1,4 +1,4 @@
-package top.hazenix.common.utils;
+package top.hazenix.auris.utils;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtBuilder;

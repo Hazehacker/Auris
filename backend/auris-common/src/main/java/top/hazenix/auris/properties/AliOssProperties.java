@@ -1,4 +1,4 @@
-package top.hazenix.common.properties;
+package top.hazenix.auris.properties;
 
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;

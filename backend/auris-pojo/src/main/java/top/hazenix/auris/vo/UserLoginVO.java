@@ -1,4 +1,4 @@
-package top.hazenix.vo;
+package top.hazenix.auris.vo;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

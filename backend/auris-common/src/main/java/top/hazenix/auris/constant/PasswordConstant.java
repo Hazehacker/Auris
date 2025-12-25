@@ -1,4 +1,4 @@
-package top.hazenix.constant;
+package top.hazenix.auris.constant;
 
 /**
  * 密码常量

@@ -1,4 +1,4 @@
-package top.hazenix.entity;
+package top.hazenix.auris.entity;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -33,7 +33,7 @@ public class User implements Serializable {
     private String email;
 
     //refreshToken
-    private String refreshToken;
+//    private String refreshToken;
 
     //头像
     private String avatar;

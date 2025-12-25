@@ -1,16 +1,16 @@
-package top.hazenix.interceptor;
+package top.hazenix.auris.interceptor;
 
+import io.jsonwebtoken.Claims;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
+import org.springframework.web.method.HandlerMethod;
+import org.springframework.web.servlet.HandlerInterceptor;
 import top.hazenix.constant.JwtClaimsConstant;
 import top.hazenix.context.BaseContext;
 import top.hazenix.properties.JwtProperties;
 import top.hazenix.utils.JwtUtil;
-import io.jsonwebtoken.Claims;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
-import org.springframework.web.method.HandlerMethod;
-import org.springframework.web.servlet.HandlerInterceptor;
+
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 

@@ -1,4 +1,4 @@
-package top.hazenix.common.utils;
+package top.hazenix.auris.utils;
 
 import com.alibaba.fastjson.JSONObject;
 import org.apache.http.NameValuePair;

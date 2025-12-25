@@ -1,4 +1,4 @@
-package top.hazenix.result;
+package top.hazenix.auris.result;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

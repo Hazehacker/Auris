@@ -1,4 +1,4 @@
-package top.hazenix.constant;
+package top.hazenix.auris.constant;
 
 /**
  * 状态常量，启用或者禁用
