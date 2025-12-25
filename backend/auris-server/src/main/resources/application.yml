@@ -1,0 +1,66 @@
+server:
+  port: ${auris.server.port}
+
+spring:
+  profiles:
+    active: dev
+  application:
+    main:
+      allow-circular-references: true
+  datasource:
+    url: jdbc:mysql://${auris.datasource.host:localhost}:${auris.datasource.port:3306}/${auris.datasource.database:klassbox3}?serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=utf-8&zeroDateTimeBehavior=convertToNull&useSSL=false&allowPublicKeyRetrieval=true&autoReconnect=true&rewriteBatchedStatements=true
+    driver-class-name: ${auris.datasource.driver-class-name:com.mysql.cj.jdbc.Driver}
+    username: ${auris.datasource.username:root}
+    password: ${auris.datasource.password:1234}
+  redis:
+    host: ${auris.redis.host}
+    port: ${auris.redis.port}
+    password: ${auris.redis.password}
+    database: ${auris.redis.database}
+
+mybatis:
+  #mapper配置文件
+  mapper-locations: classpath:mapper/*.xml
+  type-aliases-package: top.hazenix.entity
+  configuration:
+    #开启驼峰命名
+    map-underscore-to-camel-case: true
+    # 开启sql语句信息输出
+    # log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+logging:
+  level:
+    top:
+      hazenix:
+        mapper: info
+        service: debug
+        controller: debug
+
+
+auris:
+  baidu:
+    tgeo-coding-url: ${auris.baidu.tgeo-coding-url}
+    shop-lng: ${auris.baidu.shop-lng}
+    shop-lat: ${auris.baidu.shop-lat}
+    route-plan-url: ${auris.baidu.route-plan-url}
+  jwt:
+    # 设置jwt签名加密时使用的秘钥
+    admin-secret-key: ${auris.jwt.admin-secret-key}
+    # 设置jwt过期时间
+    admin-ttl: 43200000
+    # 设置前端传递过来的令牌名称
+    admin-token-name: ${auris.jwt.admin-token-name}
+    enable: ${auris.jwt.enable}
+
+    # 用户端jwt令牌相关配置
+    # 设置jwt签名加密时使用的秘钥
+    user-secret-key: ${auris.jwt.user-secret-key}
+    # 设置jwt过期时间
+    user-ttl: 43200000
+    # 设置前端传递过来的令牌名称
+    user-token-name: ${auris.jwt.user-token-name}
+  alioss:
+    endpoint: ${auris.alioss.endpoint}
+    access-key-id: ${auris.alioss.access-key-id}
+    access-key-secret: ${auris.alioss.access-key-secret}
+    bucket-name: ${auris.alioss.bucket-name}
