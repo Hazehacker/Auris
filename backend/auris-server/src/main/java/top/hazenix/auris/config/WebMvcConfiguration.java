@@ -40,7 +40,10 @@ public class WebMvcConfiguration extends WebMvcConfigurationSupport {
                 .addPathPatterns("/user/user/logout")
                 .addPathPatterns("/user/user/userinfo")
                 .addPathPatterns("/user/user/profile")
-                .addPathPatterns("/user/user/password");
+                .addPathPatterns("/user/user/password")
+                .addPathPatterns("/user/playlist/**")
+
+        ;
 
 
 
