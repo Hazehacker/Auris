@@ -42,7 +42,7 @@ public class User implements Serializable {
     private Integer gender;
 
     //身份证号
-    private Integer status;
+    private Boolean status;
 
     //角色
     private Integer role;
@@ -54,5 +54,5 @@ public class User implements Serializable {
     private LocalDateTime updateTime;
 
     //上次登录时间
-    private LocalDateTime lastLoginTime;
+//    private LocalDateTime lastLoginTime;
 }

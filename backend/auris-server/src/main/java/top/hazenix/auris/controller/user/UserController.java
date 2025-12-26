@@ -23,7 +23,7 @@ import javax.servlet.http.HttpServletRequest;
  * @return
  */
 @RestController
-@RequestMapping("/user")
+@RequestMapping("/user/user")
 @RequiredArgsConstructor
 @Api("用户管理相关接口")
 @Slf4j

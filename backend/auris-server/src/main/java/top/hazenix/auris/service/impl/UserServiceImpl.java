@@ -11,6 +11,7 @@ import top.hazenix.auris.constant.MessageConstant;
 import top.hazenix.auris.context.BaseContext;
 import top.hazenix.auris.dto.UserDTO;
 import top.hazenix.auris.entity.User;
+import top.hazenix.auris.mapper.UserMapper;
 import top.hazenix.auris.properties.JwtProperties;
 import top.hazenix.auris.query.UserLoginQuery;
 import top.hazenix.auris.service.IUserService;
@@ -29,6 +30,7 @@ public class UserServiceImpl implements IUserService {
 
     private final JwtProperties jwtProperties;
     private final RedisTemplate redisTemplate;
+    private final UserMapper userMapper;
 
     /**
      * 完成用户登录功能的相关逻辑
@@ -46,17 +48,17 @@ public class UserServiceImpl implements IUserService {
         if(!processedPassword.equals(user.getPassword())){
             throw new RuntimeException(MessageConstant.EMAIL_OR_PASSWORD_ERROR);
         }
-        if(user.getStatus()!=null && user.getStatus()==1){
+        if(user.getStatus()!=null && !user.getStatus()){
             throw new RuntimeException(MessageConstant.CURRENT_USER_IS_ILLEGAL);
         }
         user.setPassword("*");
 
         //更新lastLoginTime字段
-        User userUse = User.builder()
-                .id(user.getId())
-                .lastLoginTime(LocalDateTime.now())
-                .build();
-        userMapper.updateLastLoginTime(userUse);
+//        User userUse = User.builder()
+//                .id(user.getId())
+//                .lastLoginTime(LocalDateTime.now())
+//                .build();
+//        userMapper.updateLastLoginTime(userUse);
 
         //生成JWT，组装返回对象
         HashMap<String,Object> claims = new HashMap<>();
@@ -93,7 +95,8 @@ public class UserServiceImpl implements IUserService {
                 .email(userLoginQuery.getEmail())
                 .password(processedPassword)
                 .role(2)//默认普通用户
-                .lastLoginTime(LocalDateTime.now())
+                .status(true)//默认正常状态，false表示禁用
+//                .lastLoginTime(LocalDateTime.now())
                 .build();
         userMapper.insert(user);
 
@@ -211,5 +214,22 @@ public class UserServiceImpl implements IUserService {
                 .email(userNow.getEmail())
                 .build();
         return userVO;
+    }
+
+
+    // 在JWT验证时增加黑名单检查
+    private boolean isTokenInBlacklist(String token) {
+        String key = "jwt:blacklist:" + getTokenSignature(token);
+        return Boolean.TRUE.equals(redisTemplate.hasKey(key));
+    }
+    private String getTokenSignature(String token) {
+        if (org.apache.commons.lang.StringUtils.isBlank(token)) {
+            return null;
+        }
+        String[] chunks = token.split("\\.");
+        if (chunks.length > 2) {
+            return chunks[2]; // signature part
+        }
+        return null;
     }
 }
