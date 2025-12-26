@@ -8,10 +8,10 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.HandlerInterceptor;
-import top.hazenix.constant.JwtClaimsConstant;
-import top.hazenix.context.BaseContext;
-import top.hazenix.properties.JwtProperties;
-import top.hazenix.utils.JwtUtil;
+import top.hazenix.auris.constant.JwtClaimsConstant;
+import top.hazenix.auris.context.BaseContext;
+import top.hazenix.auris.properties.JwtProperties;
+import top.hazenix.auris.utils.JwtUtil;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -83,6 +83,11 @@ public class JwtTokenUserInterceptor implements HandlerInterceptor {
             return chunks[2]; // signature part
         }
         return null;
+    }
+    @Override
+    public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) throws Exception {
+        //用完之后，清理数据
+        BaseContext.removeCurrentId();
     }
 
 }

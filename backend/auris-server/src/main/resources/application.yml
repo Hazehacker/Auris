@@ -8,9 +8,9 @@ spring:
     main:
       allow-circular-references: true
   datasource:
-    url: jdbc:mysql://${auris.datasource.host:localhost}:${auris.datasource.port:3306}/${auris.datasource.database:auris}?serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=utf-8&zeroDateTimeBehavior=convertToNull&useSSL=false&allowPublicKeyRetrieval=true&autoReconnect=true&rewriteBatchedStatements=true
-    driver-class-name: ${auris.datasource.driver-class-name:com.mysql.cj.jdbc.Driver}
-    username: ${auris.datasource.username:root}
+    url: jdbc:postgresql://${auris.datasource.host:localhost}:${auris.datasource.port:5432}/${auris.datasource.database:auris}?sslmode=disable
+    driver-class-name: ${auris.datasource.driver-class-name:org.postgresql.Driver}
+    username: ${auris.datasource.username:postgres}
     password: ${auris.datasource.password:1234}
   redis:
     host: ${auris.redis.host}
