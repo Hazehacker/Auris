@@ -47,12 +47,12 @@ public class TrackController {
 
     /**
      * @description: 根据歌单id向歌单添加歌曲
-     * @param: id, trackQuery, file
+     * @param: id, trackQuery, file(可选)
      * @version: 1.0.0
      * @return
      */
     @PostMapping("/playlist/{id}")
-    public Result addTrack(@PathVariable Long id, @RequestBody TrackQuery trackQuery, @RequestParam MultipartFile file){
+    public Result addTrack(@PathVariable Long id, @RequestBody TrackQuery trackQuery, @RequestParam(required = false) MultipartFile file){
         log.info("添加歌曲:{}",trackQuery);
         trackService.addTrack(trackQuery,file);
         return Result.success();
