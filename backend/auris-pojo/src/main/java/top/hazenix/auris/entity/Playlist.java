@@ -16,7 +16,7 @@ public class Playlist {
     private String name;
     private Integer sort;
     private String slug;
-    private Integer status;
+    private Boolean status;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
     private Long userId;
