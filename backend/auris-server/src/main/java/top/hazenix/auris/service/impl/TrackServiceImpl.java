@@ -47,4 +47,14 @@ public class TrackServiceImpl implements ITrackService {
     public void addTrack(TrackQuery trackQuery, MultipartFile file) {
 
     }
+
+    @Override
+    public void removeTrack(Long id, Long trackId) {
+
+    }
+
+    @Override
+    public void updateTrackSort(List<Long> ids) {
+
+    }
 }

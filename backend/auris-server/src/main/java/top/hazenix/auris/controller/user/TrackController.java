@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import top.hazenix.auris.constant.MessageConstant;
 import top.hazenix.auris.entity.Track;
+import top.hazenix.auris.query.ReOrderTracksQuery;
 import top.hazenix.auris.query.TrackQuery;
 import top.hazenix.auris.result.Result;
 import top.hazenix.auris.service.ITrackService;
@@ -32,7 +33,7 @@ public class TrackController {
 
     /**
      * @description: 根据歌单id获取歌曲列表
-     * @param:
+     * @param: id
      * @version: 1.0.0
      * @return
      */
@@ -45,17 +46,46 @@ public class TrackController {
 
 
     /**
-     * @description: 添加歌曲
-     * @param: track
+     * @description: 根据歌单id向歌单添加歌曲
+     * @param: id, trackQuery, file
      * @version: 1.0.0
      * @return
      */
-    @PostMapping
-    public Result addTrack(@RequestBody TrackQuery trackQuery, @RequestParam MultipartFile file){
+    @PostMapping("/playlist/{id}")
+    public Result addTrack(@PathVariable Long id, @RequestBody TrackQuery trackQuery, @RequestParam MultipartFile file){
         log.info("添加歌曲:{}",trackQuery);
         trackService.addTrack(trackQuery,file);
         return Result.success();
     }
+
+    /**
+     * @description: 从歌单中移除歌曲
+     * @param: id, trackId
+     * @version: 1.0.0
+     * @return
+     */
+    @DeleteMapping("/playlist/{id}/{trackId}")
+    public Result removeTrack(@PathVariable Long id, @PathVariable Long trackId){
+        log.info("从歌单中移除歌曲:{}, {}",id, trackId);
+        trackService.removeTrack(id, trackId);
+        return Result.success();
+    }
+
+    /**
+     * @description: 重新排序歌单内歌曲
+     * @param: id, trackId
+     * @version: 1.0.0
+     * @return
+     */
+    @PutMapping("/playlist/{id}/reorder")
+    public Result updateTrackSort(@RequestBody ReOrderTracksQuery reOrderTracksQuery){
+        List<Long> ids = reOrderTracksQuery.getIds();
+        log.info("重新排序歌单内歌曲:{}, {}",ids);
+        trackService.updateTrackSort(ids);
+        return Result.success();
+    }
+
+
 
     /**
      * @description: 上传封面
