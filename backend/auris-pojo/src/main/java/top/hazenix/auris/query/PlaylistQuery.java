@@ -13,6 +13,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class PlaylistQuery {
 
+    private Long id;
     private String name;
     private Integer sort;//默认为1
     private Boolean status;//默认为true(正常) false(删除)
