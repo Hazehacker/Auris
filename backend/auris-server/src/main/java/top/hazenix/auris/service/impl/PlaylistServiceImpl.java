@@ -45,7 +45,15 @@ public class PlaylistServiceImpl implements IPlaylistService {
 
     @Override
     public void deletePlaylist(Long id) {
-
+        Playlist playList = Playlist.builder()
+                .id(id)
+                .status(false)
+                .updateTime(LocalDateTime.now())
+                .build();
+        UpdateWrapper<Playlist> updateWrapper = new UpdateWrapper<>();
+        updateWrapper.eq("id", id);
+        updateWrapper.eq("user_id", BaseContext.getCurrentId());//健壮性-只能修改自己的歌单
+        playlistMapper.update(playList, updateWrapper);
     }
 
     @Override
@@ -66,6 +74,7 @@ public class PlaylistServiceImpl implements IPlaylistService {
         UpdateWrapper<Playlist> updateWrapper = new UpdateWrapper<>();
         updateWrapper.eq("id", playlistQuery.getId());//创建了一个 UpdateWrapper 对象来指定更新条件
         // 使用 eq("id", playlistQuery.getId()) 来指定更新条件，即只更新ID匹配的记录
+        updateWrapper.eq("user_id", BaseContext.getCurrentId());//健壮性-只能修改自己的歌单
         playlistMapper.update(playList, updateWrapper);
     }
 }
