@@ -1,6 +1,7 @@
 package top.hazenix.auris.controller.user;
 
 import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
@@ -33,6 +34,7 @@ public class PlaylistController {
      * @return
      */
     @GetMapping
+    @ApiOperation("获取所有歌单列表")
     public Result getAllPlaylist(){
         log.info("获取所有歌单列表");
         List<Playlist> list = playlistService.getAllPlaylist();
@@ -46,6 +48,7 @@ public class PlaylistController {
      * @return
      */
     @PostMapping
+    @ApiOperation("创建歌单")
     public Result createPlaylist(@RequestBody PlaylistQuery playlistQuery){
         log.info("创建新歌单:{}",playlistQuery);
         playlistService.createPlaylist(playlistQuery);
@@ -59,6 +62,7 @@ public class PlaylistController {
      * @return
      */
     @PutMapping
+    @ApiOperation("修改歌单信息")
     public Result updatePlaylist(@RequestBody PlaylistQuery playlistQuery){
         log.info("修改歌单信息:{}",playlistQuery);
         playlistService.updatePlaylist(playlistQuery);
@@ -72,6 +76,7 @@ public class PlaylistController {
      * @return
      */
     @DeleteMapping("/{id}")
+    @ApiOperation("删除歌单")
     public Result deletePlaylist(@PathVariable Long id){
         log.info("删除歌单:{}",id);
         playlistService.deletePlaylist(id);
