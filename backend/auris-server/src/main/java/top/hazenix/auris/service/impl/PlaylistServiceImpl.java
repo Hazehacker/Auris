@@ -24,7 +24,23 @@ public class PlaylistServiceImpl implements IPlaylistService {
 
     @Override
     public void createPlaylist(PlaylistQuery playlistQuery) {
+        //参数校验
+        if (playlistQuery.getSort() < 0) {
+            throw new RuntimeException("排序值不能小于0");
+        }
+        if (playlistQuery.getStatus() == null) {
+            playlistQuery.setStatus(true);
+        }
 
+        Playlist playList = Playlist.builder()
+                .name(playlistQuery.getName())
+                .sort(playlistQuery.getSort())
+                .status(playlistQuery.getStatus())
+                .createTime(LocalDateTime.now())
+                .updateTime(LocalDateTime.now())
+                .userId(BaseContext.getCurrentId())
+                .build();
+        playlistMapper.insert(playList);
     }
 
     @Override
