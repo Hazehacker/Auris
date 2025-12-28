@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import top.hazenix.auris.constant.MessageConstant;
 import top.hazenix.auris.entity.Track;
+import top.hazenix.auris.mapper.TrackMapper;
 import top.hazenix.auris.query.TrackQuery;
 import top.hazenix.auris.service.ITrackService;
 import top.hazenix.auris.utils.AliOssUtil;
@@ -16,11 +17,12 @@ import java.util.List;
 @RequiredArgsConstructor
 public class TrackServiceImpl implements ITrackService {
     private final AliOssUtil aliOssUtil;
-
+    private final TrackMapper trackMapper;
 
     @Override
     public List<Track> getTrackByPlaylistId(Long id) {
-
+//        List<Track> list = trackMapper.selectList(new TrackQuery().setPlaylistId(id));
+//        trackMapper.selectList()
         return null;
     }
 
