@@ -16,5 +16,4 @@ public class PlaylistTracks {
     private Long playlistId;
     private Long trackId;
     private Integer orderIndex;//倒序排序
-    private LocalDateTime createdTime;
 }

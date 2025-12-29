@@ -53,4 +53,8 @@ public class MessageConstant {
     public static final String TRACK_NOT_EXIST = "不存在该歌曲";
     public static final String FILE_NOT_AUDIO = "该文件不是音频";
     public static final String FILE_NOT_IMAGE = "不支持的图片格式";
+    public static final String PLAYLIST_TRACK_NOT_MATCH = "ids集合数量不匹配";
+    public static final String LRC_ONLY = "仅支持.lrc文件";
+    public static final String NO_AUTH_EDIT = "没有权限编辑这首歌的歌词";
+    public static final String FILE_READ_ERROR = "读取歌词文件失败";
 }

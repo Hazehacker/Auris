@@ -1,5 +1,7 @@
 package top.hazenix.auris.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -144,12 +146,36 @@ public class TrackServiceImpl implements ITrackService {
     }
 
     @Override
+    @Transactional
     public void removeTrack(Long id, Long trackId) {
-
+        // 硬删除
+        QueryWrapper<PlaylistTracks> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("playlist_id",id);
+        queryWrapper.eq("track_id",trackId);
+        playlistTracksMapper.delete(queryWrapper);
+        trackMapper.deleteById(trackId);
     }
 
     @Override
-    public void updateTrackSort(List<Long> ids) {
+    public void updateTrackSort(Long id, List<Long> ids) {
+        QueryWrapper<PlaylistTracks> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("playlist_id", id);
+        Long cnt = playlistTracksMapper.selectCount(queryWrapper);
+        if (cnt != ids.size()) {
+            throw new RuntimeException(MessageConstant.PLAYLIST_TRACK_NOT_MATCH);
+        }
+
+        int orderIndex = ids.size();
+        for(int i = 0; i < ids.size(); i++){
+            PlaylistTracks playlistTracks = PlaylistTracks.builder()
+                    .trackId(ids.get(i))
+                    .orderIndex(orderIndex--)
+                    .build();
+            UpdateWrapper<PlaylistTracks> updateWrapper = new UpdateWrapper<>();
+            updateWrapper.eq("track_id", playlistTracks.getTrackId());
+            playlistTracksMapper.update(playlistTracks, updateWrapper);
+        }
+
 
     }
 }

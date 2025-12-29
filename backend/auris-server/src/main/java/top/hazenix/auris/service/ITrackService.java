@@ -17,5 +17,5 @@ public interface ITrackService {
 
     void removeTrack(Long id, Long trackId);
 
-    void updateTrackSort(List<Long> ids);
+    void updateTrackSort(Long id, List<Long> ids);
 }
