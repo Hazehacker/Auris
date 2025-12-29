@@ -1,6 +1,7 @@
 package top.hazenix.auris.controller.user;
 
 import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
@@ -38,6 +39,7 @@ public class TrackController {
      * @return
      */
     @GetMapping("/playlist/{id}")
+    @ApiOperation("根据歌单id获取歌曲列表")
     public Result getTrackByPlaylistId(@PathVariable Long id){
         log.info("根据歌单id获取歌曲列表:{}",id);
         List<Track> list = trackService.getTrackByPlaylistId(id);
@@ -47,15 +49,31 @@ public class TrackController {
 
     /**
      * @description: 根据歌单id向歌单添加歌曲
-     * @param: id, trackQuery, file(可选)
+     * @param: trackQuery, file(可选)
      * @version: 1.0.0
      * @return
      */
-    @PostMapping("/playlist/{id}")
-    public Result addTrack(@PathVariable Long id, @RequestBody TrackQuery trackQuery, @RequestParam(required = false) MultipartFile file){
-        log.info("添加歌曲:{}",trackQuery);
-        trackService.addTrack(trackQuery,file);
-        return Result.success();
+    @PostMapping(value = "/playlist", consumes = {"multipart/form-data"})
+    @ApiOperation("根据歌单id向歌单添加歌曲")
+    public Result addTrack(
+            @RequestParam("playlistId") Long playlistId,
+            @RequestParam(value = "orderIndex", required = false, defaultValue = "0") Integer orderIndex,
+            @RequestParam("title") String title,
+            @RequestParam(value = "artist") String artist,
+            @RequestParam(value = "album", required = false) String album,
+            @RequestParam(value = "coverUrl", required = false) String coverUrl,
+            @RequestParam(value = "file", required = false) MultipartFile file){
+        TrackQuery trackQuery = TrackQuery.builder()
+                .playlistId(playlistId)
+                .orderIndex(orderIndex)
+                .title(title)
+                .artist(artist)
+                .album(album)
+                .coverUrl(coverUrl)
+                .build();
+        log.info("添加歌曲:{}", trackQuery);
+        String url = trackService.addTrack(trackQuery, file);
+        return Result.success(url);
     }
 
     /**
@@ -65,6 +83,7 @@ public class TrackController {
      * @return
      */
     @DeleteMapping("/playlist/{id}/{trackId}")
+    @ApiOperation("从歌单中移除歌曲")
     public Result removeTrack(@PathVariable Long id, @PathVariable Long trackId){
         log.info("从歌单中移除歌曲:{}, {}",id, trackId);
         trackService.removeTrack(id, trackId);
@@ -78,6 +97,7 @@ public class TrackController {
      * @return
      */
     @PutMapping("/playlist/{id}/reorder")
+    @ApiOperation("重新排序歌单内歌曲")
     public Result updateTrackSort(@RequestBody ReOrderTracksQuery reOrderTracksQuery){
         List<Long> ids = reOrderTracksQuery.getIds();
         log.info("重新排序歌单内歌曲:{}, {}",ids);
@@ -94,6 +114,7 @@ public class TrackController {
      * @return
      */
     @PostMapping("/{id}/cover")
+    @ApiOperation("上传封面")
     public Result uploadCover(@PathVariable Long id,@RequestParam MultipartFile file){
         log.info("文件上传：{}",file.getOriginalFilename());
         //将文件交给OSS存储管理
@@ -108,6 +129,7 @@ public class TrackController {
      * @return
      */
     @PostMapping("/{id}/audio")
+    @ApiOperation("上传音频")
     public Result uploadAudio(@PathVariable Long id, @RequestParam MultipartFile file){
         log.info("音频上传：{}",file.getOriginalFilename());
         //将文件交给OSS存储管理

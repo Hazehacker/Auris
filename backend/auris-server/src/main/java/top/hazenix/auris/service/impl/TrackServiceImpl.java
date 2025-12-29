@@ -1,43 +1,42 @@
 package top.hazenix.auris.service.impl;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import top.hazenix.auris.constant.MessageConstant;
+import top.hazenix.auris.entity.PlaylistTracks;
 import top.hazenix.auris.entity.Track;
+import top.hazenix.auris.mapper.PlaylistTracksMapper;
 import top.hazenix.auris.mapper.TrackMapper;
 import top.hazenix.auris.query.TrackQuery;
 import top.hazenix.auris.service.ITrackService;
 import top.hazenix.auris.utils.AliOssUtil;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class TrackServiceImpl implements ITrackService {
     private final AliOssUtil aliOssUtil;
     private final TrackMapper trackMapper;
+    private final PlaylistTracksMapper playlistTracksMapper;
 
     @Override
     public List<Track> getTrackByPlaylistId(Long id) {
-//        List<Track> list = trackMapper.selectList(new TrackQuery().setPlaylistId(id));
-//        trackMapper.selectList()
-        return null;
+        List<Track> list = playlistTracksMapper.listTracksByPlaylistId(id);
+        return list;
     }
 
     @Override
     public String uploadCover(Long id, MultipartFile file) {
         //TODO 参数校验-健壮性
 
-        String url = null;
-        try {
-            url = aliOssUtil.upload(file.getBytes(),file.getOriginalFilename());
-            return url;
-        } catch (IOException e) {
-            e.printStackTrace();
-            throw new RuntimeException(MessageConstant.UPLOAD_FAILED);
-        }
+        return fileUpload(file);
     }
 
     @Override
@@ -45,9 +44,52 @@ public class TrackServiceImpl implements ITrackService {
         return "";
     }
 
+    /**
+     * @description: 添加歌曲
+     * @param: trackQuery, file
+     * @version: 1.0.0
+     * @return
+     */
     @Override
-    public void addTrack(TrackQuery trackQuery, MultipartFile file) {
+    @Transactional
+    public String addTrack(TrackQuery trackQuery, MultipartFile file) {
+        Track track = Track.builder()
+                .title(trackQuery.getTitle())
+                .artist(trackQuery.getArtist())
+                .album(trackQuery.getAlbum())
+//                .duration(trackQuery.getDuration())//TODO 考虑添加，前端多传一个参数
+                .coverUrl(trackQuery.getCoverUrl())
+                .build();
+        String url = null;
+        try {
+            if(file != null){
+                url = fileUpload(file);
+            }
+        } finally {
+            track.setFilePath(url);
+            track.setCreateTime(LocalDateTime.now());
+            trackMapper.insert(track);
+            PlaylistTracks playlistTracks = PlaylistTracks.builder()
+                    .playlistId(trackQuery.getPlaylistId())
+                    .trackId(track.getId())
+                    .orderIndex(trackQuery.getOrderIndex())
+                            .build();
+            playlistTracksMapper.insert(playlistTracks);
+            return url;
+        }
+    }
 
+    String fileUpload(MultipartFile file){
+        log.info("文件上传：{}",file.getOriginalFilename());
+        //将文件交给OSS存储管理
+        String url;
+        try {
+            url = aliOssUtil.upload(file.getBytes(),file.getOriginalFilename());
+            return url;
+        } catch (IOException e) {
+            e.printStackTrace();
+            throw new RuntimeException(MessageConstant.UPLOAD_FAILED);
+        }
     }
 
     @Override

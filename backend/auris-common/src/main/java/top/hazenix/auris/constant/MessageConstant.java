@@ -48,4 +48,6 @@ public class MessageConstant {
     public static final String ID_TOKEN_INVALID = "id_token无效";
     public static final String AUDIENCE_INVALID = "无效的audience";
     public static final String GOOGLE_LOGIN_ERROR = "google登录失败";
+    public static final String PLAYLIST_BE_RELATED_BY_TRACK = "当前歌单关联了歌曲，不能删除";
+    public static final String FILE_NOT_EXIST = "注意补充该歌曲的音频";
 }

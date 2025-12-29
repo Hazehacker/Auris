@@ -3,9 +3,12 @@ package top.hazenix.auris.service.impl;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import top.hazenix.auris.constant.MessageConstant;
 import top.hazenix.auris.context.BaseContext;
 import top.hazenix.auris.entity.Playlist;
 import top.hazenix.auris.mapper.PlaylistMapper;
+import top.hazenix.auris.mapper.TrackMapper;
+import top.hazenix.auris.service.ITrackService;
 import top.hazenix.auris.query.PlaylistQuery;
 import top.hazenix.auris.service.IPlaylistService;
 
@@ -16,6 +19,8 @@ import java.util.List;
 @RequiredArgsConstructor
 public class PlaylistServiceImpl implements IPlaylistService {
     private final PlaylistMapper playlistMapper;
+    private final ITrackService trackService;
+
     @Override
     public List<Playlist> getAllPlaylist() {
         Long userId = BaseContext.getCurrentId();
@@ -45,6 +50,11 @@ public class PlaylistServiceImpl implements IPlaylistService {
 
     @Override
     public void deletePlaylist(Long id) {
+        //如果歌单关联了歌曲，不能删除
+        if (trackService.getTrackByPlaylistId(id).size() > 0) {
+            throw new RuntimeException(MessageConstant.PLAYLIST_BE_RELATED_BY_TRACK);
+        }
+
         Playlist playList = Playlist.builder()
                 .id(id)
                 .status(false)
@@ -52,7 +62,7 @@ public class PlaylistServiceImpl implements IPlaylistService {
                 .build();
         UpdateWrapper<Playlist> updateWrapper = new UpdateWrapper<>();
         updateWrapper.eq("id", id);
-        updateWrapper.eq("user_id", BaseContext.getCurrentId());//健壮性-只能修改自己的歌单
+        updateWrapper.eq("user_id", BaseContext.getCurrentId());//健壮性-只能删除自己的歌单
         playlistMapper.update(playList, updateWrapper);
     }
 

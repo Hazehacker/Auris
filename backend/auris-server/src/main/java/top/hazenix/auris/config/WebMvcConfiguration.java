@@ -42,6 +42,8 @@ public class WebMvcConfiguration extends WebMvcConfigurationSupport {
                 .addPathPatterns("/user/user/profile")
                 .addPathPatterns("/user/user/password")
                 .addPathPatterns("/user/playlist/**")
+                .addPathPatterns("/user/track/**")
+                .addPathPatterns("/user/lyrics/**")
 
         ;
 
