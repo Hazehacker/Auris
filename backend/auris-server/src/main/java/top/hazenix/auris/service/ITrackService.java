@@ -13,7 +13,7 @@ public interface ITrackService {
 
     String uploadAudio(Long id, MultipartFile file);
 
-    void addTrack(TrackQuery trackQuery, MultipartFile file);
+    String addTrack(TrackQuery trackQuery, MultipartFile file);
 
     void removeTrack(Long id, Long trackId);
 

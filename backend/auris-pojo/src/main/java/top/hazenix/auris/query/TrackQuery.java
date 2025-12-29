@@ -12,6 +12,8 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 public class TrackQuery {
+    private Long playlistId;//歌单id
+    private Integer orderIndex;
     private String title;//标题，必填
     private String artist;//歌手
     private String album;//专辑

@@ -38,7 +38,7 @@ mybatis-plus:
     cache-enabled: false # 是否开启二级缓存
   global-config:
     db-config:
-      id-type: assign_id # 设置全局的id生成策略：id为雪花算法生成
+      id-type: AUTO # 设置全局的id生成策略：id为雪花算法生成
       update-strategy: not_null # 设置更新策略：只更新非空字段
 
 logging:
