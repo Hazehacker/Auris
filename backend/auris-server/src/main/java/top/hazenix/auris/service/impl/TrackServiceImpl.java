@@ -16,6 +16,7 @@ import top.hazenix.auris.utils.AliOssUtil;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
 
 @Service
@@ -34,14 +35,64 @@ public class TrackServiceImpl implements ITrackService {
 
     @Override
     public String uploadCover(Long id, MultipartFile file) {
-        //TODO 参数校验-健壮性
+        //参数校验-健壮性
+        if (file == null) {
+            throw new RuntimeException(MessageConstant.FILE_NOT_EXIST);
+        }
+        Track track = trackMapper.selectById(id);
+        if(track == null){
+            throw new RuntimeException(MessageConstant.TRACK_NOT_EXIST);
+        }
+        // 校验file是否是图片
+        if (!file.getContentType().startsWith("image")) {
+            throw new RuntimeException(MessageConstant.FILE_NOT_IMAGE);
+        }
+        String originalFilename = file.getOriginalFilename();
+        if (originalFilename != null) {
+            String extension = originalFilename.substring(originalFilename.lastIndexOf("."));
+            List<String> imageExtensions = Arrays.asList(".jpg", ".jpeg", ".png", ".gif", ".bmp");
+            if (!imageExtensions.contains(extension.toLowerCase())) {
+                throw new RuntimeException(MessageConstant.FILE_NOT_IMAGE);
+            }
+        }
 
-        return fileUpload(file);
+        //上传封面，更新属性
+        String url = null;
+        url = fileUpload(file);
+        track.setCoverUrl(url);
+        trackMapper.updateById(track);
+        return url;
     }
 
     @Override
     public String uploadAudio(Long id, MultipartFile file) {
-        return "";
+        // 参数校验-健壮性
+        if (file == null) {
+            throw new RuntimeException(MessageConstant.FILE_NOT_EXIST);
+        }
+        Track track = trackMapper.selectById(id);
+        if(track == null){
+            throw new RuntimeException(MessageConstant.TRACK_NOT_EXIST);
+        }
+        // 校验file是否为音频
+        if (!file.getContentType().startsWith("audio")) {
+            throw new RuntimeException(MessageConstant.FILE_NOT_AUDIO);
+        }
+        String originalFilename = file.getOriginalFilename();
+        if (originalFilename != null) {
+            String extension = originalFilename.substring(originalFilename.lastIndexOf("."));
+            List<String> audioExtensions = Arrays.asList(".mp3", ".wav", ".flac", ".aac", ".ogg", ".m4a");
+            if (!audioExtensions.contains(extension.toLowerCase())) {
+                throw new RuntimeException(MessageConstant.FILE_NOT_AUDIO);
+            }
+        }
+
+        //上传音频，更新属性
+        String url = null;
+        url = fileUpload(file);
+        track.setFilePath(url);
+        trackMapper.updateById(track);
+        return url;
     }
 
     /**
