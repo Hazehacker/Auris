@@ -98,10 +98,10 @@ public class TrackController {
      */
     @PutMapping("/playlist/{id}/reorder")
     @ApiOperation("重新排序歌单内歌曲")
-    public Result updateTrackSort(@RequestBody ReOrderTracksQuery reOrderTracksQuery){
+    public Result updateTrackSort(@RequestBody ReOrderTracksQuery reOrderTracksQuery, @PathVariable Long id){
         List<Long> ids = reOrderTracksQuery.getIds();
         log.info("重新排序歌单内歌曲:{}, {}",ids);
-        trackService.updateTrackSort(ids);
+        trackService.updateTrackSort(id, ids);
         return Result.success();
     }
 
