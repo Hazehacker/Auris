@@ -384,6 +384,7 @@ import { api } from './api.js'
 
 <script setup>
 import { ref, watch, onMounted, computed, onUnmounted, nextTick } from 'vue'
+import { api } from './api.js'
 
 // 基本播放数据
 const songList = ref([])
@@ -425,10 +426,7 @@ const songDeleteIndex = ref(null)
 
 
 const fetchPlaylists = async () => {
-  const res = await fetch('/playlist/list', {
-    headers: { 'Authorization': `Bearer ${token.value}` }
-  })
-  const data = await res.json()
+  const data = await api.getPlaylists()
   if (data.code === 200) {
     playlists.value = data.data
   }
@@ -436,21 +434,8 @@ const fetchPlaylists = async () => {
 
 //初始化加载用户数据
 const fetchFavTracks = async () => {
-  const res = await fetch('/track/favList', {
-    headers: { 'Authorization': `Bearer ${token.value}` }
-  })
-  const data = await res.json()
-  if (data.code === 200) {
-    // 将 favList 合并到 songList（去重）
-    const favMap = new Map()
-    data.data.forEach(track => {
-      favMap.set(track.id, { ...track, fav: true })
-    })
-    // 更新 songList 中的 fav 状态
-    songList.value = songList.value.map(s => 
-      favMap.has(s.id) ? { ...s, fav: true } : s
-    )
-  }
+  // 注意：接口文档中没有专门的收藏列表接口，这里暂时保留原逻辑
+  // 如果需要，可以通过获取所有歌单中的歌曲来获取收藏状态
 }
 
 onMounted(() => {
@@ -488,7 +473,11 @@ onMounted(() => {
   if (isDismissed) landingOpen.value = false
   
   // 初始化用户信息
-  if (token.value) fetchUserInfo()
+  if (token.value) {
+    fetchUserInfo().then(() => {
+      // 用户信息加载完成后，会自动加载歌单（在 fetchUserInfo 中调用）
+    })
+  }
 })
 
 // 组件卸载时清理定时器与释放临时封面 URL
@@ -637,12 +626,7 @@ const login = async () => {
     authError.value = '请填写邮箱与密码'; return 
   }
   try {
-    const res = await fetch('/user/login', { 
-      method: 'POST', 
-      headers: { 'Content-Type': 'application/json' }, 
-      body: JSON.stringify({ email: authForm.value.email, password: authForm.value.password }) 
-    })
-    const data = await res.json()
+    const data = await api.login(authForm.value.email, authForm.value.password)
     if (data && data.code === 200) {
       setToken(data.data.token)
       currentUser.value = data.data
@@ -654,6 +638,8 @@ const login = async () => {
         setLandingDismissed(true)
         viewMode.value = 'profile'
       }, 500)
+      // 登录成功后加载用户数据
+      await fetchPlaylists()
     } else {
       // 登录失败：若登录是从开屏发起，则关闭模态并恢复开屏
       authError.value = data.msg || '登录失败'
@@ -677,12 +663,7 @@ const register = async () => {
     authError.value = '请填写用户名、邮箱与密码'; return 
   }
   try {
-    const res = await fetch('/user/register', { 
-      method: 'POST', 
-      headers: { 'Content-Type': 'application/json' }, 
-      body: JSON.stringify({ username: authForm.value.username, email: authForm.value.email, password: authForm.value.password }) 
-    })
-    const data = await res.json()
+    const data = await api.register(authForm.value.username, authForm.value.email, authForm.value.password)
     if (data && data.code === 200) {
       setToken(data.data.token)
       currentUser.value = data.data
@@ -694,6 +675,8 @@ const register = async () => {
         setLandingDismissed(true)
         viewMode.value = 'profile'
       }, 500)
+      // 注册成功后加载用户数据
+      await fetchPlaylists()
     } else {
       authError.value = data.msg || '注册失败'
       if (loginFromLanding.value) {
@@ -711,10 +694,11 @@ const register = async () => {
 const fetchUserInfo = async () => {
   if (!token.value) return
   try {
-    const res = await fetch('/user/userinfo', { headers: { 'authorization': 'Bearer ' + token.value } })
-    const data = await res.json()
+    const data = await api.getUserInfo()
     if (data && data.code === 200) {
       currentUser.value = data.data
+      // 获取用户信息后加载歌单
+      await fetchPlaylists()
     } else {
       setToken('')
       currentUser.value = null
@@ -728,10 +712,11 @@ const fetchUserInfo = async () => {
 
 const logout = async () => {
   if (token.value) {
-    try { await fetch('/user/logout', { method: 'POST', headers: { 'authorization': 'Bearer ' + token.value } }) } catch (e) { console.error(e) }
+    try { await api.logout() } catch (e) { console.error(e) }
   }
   setToken('')
   currentUser.value = null
+  playlists.value = []
   viewMode.value = 'all'
 }
 
@@ -783,37 +768,95 @@ const handleFileUpload = async (e) => {
   const files = e.target.files
   if (!files || !files.length) return
 
-  for (const file of files) {
-    if (!['audio/mpeg', 'audio/wav'].includes(file.type)) continue
+  // 如果没有登录，提示用户登录
+  if (!token.value) {
+    alert('请先登录后再上传歌曲')
+    openAuth('login')
+    return
+  }
 
-    const formData = new FormData()
-    formData.append('file', file)
-    formData.append('name', file.name.replace(/\.(mp3|wav)$/i, ''))
-    formData.append('artist', '未知')
+  // 如果没有选中歌单，提示用户选择或创建歌单
+  if (!selectedPlaylistId.value) {
+    const create = confirm('请先选择或创建一个歌单，是否现在创建？')
+    if (create) {
+      await createPlaylist()
+      if (!selectedPlaylistId.value) return
+    } else {
+      return
+    }
+  }
+
+  for (const file of files) {
+    if (!['audio/mpeg', 'audio/wav', 'audio/mp3'].includes(file.type)) continue
+
+    const title = file.name.replace(/\.(mp3|wav)$/i, '')
+    const artist = '未知'
 
     try {
-      const res = await fetch('/track/upload', {
-        method: 'POST',
-        headers: {
-          'Authorization': token.value ? `Bearer ${token.value}` : ''
-        },
-        body: formData
+      // 使用接口11：向歌单添加歌曲
+      const data = await api.addTrackToPlaylist({
+        playlistId: selectedPlaylistId.value,
+        title: title,
+        artist: artist,
+        file: file
       })
-      const data = await res.json()
+      
       if (data.code === 200) {
-        // 假设后端返回 { id, name, artist, url, duration }
-        songList.value.push({
-          id: data.data.id,
-          name: data.data.name,
-          artist: data.data.artist,
-          url: data.data.url,
-          duration: data.data.duration || 0,
-          fav: false
-        })
+        // 如果上传了音频文件，data.data 会返回音频链接
+        // 需要重新获取歌单中的歌曲列表来更新界面
+        await loadPlaylistTracks(selectedPlaylistId.value)
       }
     } catch (err) {
       console.error('上传失败:', err)
+      alert('上传失败: ' + (err.message || '未知错误'))
     }
+  }
+}
+
+// 加载歌单中的歌曲列表
+const loadPlaylistTracks = async (playlistId) => {
+  try {
+    const data = await api.getTracksByPlaylist(playlistId)
+    if (data.code === 200 && Array.isArray(data.data)) {
+      // 将歌曲添加到 songList，并更新歌单的歌曲列表
+      const playlist = playlists.value.find(p => p.id === playlistId)
+      if (playlist) {
+        // 更新歌单中的歌曲索引
+        const trackIndices = data.data.map(track => {
+          // 检查歌曲是否已存在于 songList
+          let songIndex = songList.value.findIndex(s => s.id === track.id)
+          if (songIndex === -1) {
+            // 添加新歌曲到 songList
+            songList.value.push({
+              id: track.id,
+              name: track.title, // 接口返回的是 title
+              artist: track.artist,
+              album: track.album,
+              url: track.filePath, // 接口返回的是 filePath
+              duration: track.duration || 0,
+              coverUrl: track.coverUrl,
+              fav: false
+            })
+            songIndex = songList.value.length - 1
+          } else {
+            // 更新已存在的歌曲信息
+            songList.value[songIndex] = {
+              ...songList.value[songIndex],
+              name: track.title,
+              artist: track.artist,
+              album: track.album,
+              url: track.filePath,
+              duration: track.duration || songList.value[songIndex].duration,
+              coverUrl: track.coverUrl || songList.value[songIndex].coverUrl
+            }
+          }
+          return songIndex
+        })
+        playlist.songs = trackIndices
+      }
+    }
+  } catch (err) {
+    console.error('加载歌单歌曲失败:', err)
   }
 }
 
@@ -829,6 +872,12 @@ const manageSelection = ref(new Set())
 const deleteConfirmOpen = ref(false)
 
 const createPlaylist = async () => {
+  if (!token.value) {
+    alert('请先登录')
+    openAuth('login')
+    return
+  }
+
   const base = '新建歌单'
   let name = base
   let i = 1
@@ -838,31 +887,36 @@ const createPlaylist = async () => {
   }
 
   try {
-    const res = await fetch('/playlist/create', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token.value}`
-      },
-      body: JSON.stringify({ name, desc: '' })
+    // 使用接口7：创建新歌单
+    const data = await api.createPlaylist({ 
+      name, 
+      sort: 1, 
+      status: true 
     })
-    const data = await res.json()
     if (data.code === 200) {
-      playlists.value.push(data.data) // 假设返回完整 playlist 对象
-      selectPlaylist(data.data.id)
+      // 重新获取歌单列表
+      await fetchPlaylists()
+      // 找到新创建的歌单并选中
+      const newPlaylist = playlists.value.find(p => p.name === name)
+      if (newPlaylist) {
+        selectPlaylist(newPlaylist.id)
+      }
     }
   } catch (err) {
     console.error('创建歌单失败', err)
+    alert('创建歌单失败: ' + (err.message || '未知错误'))
   }
 }
 
-const selectPlaylist = (id) => {
+const selectPlaylist = async (id) => {
   selectedPlaylistId.value = id
   viewMode.value = 'playlist'
   const pl = playlists.value.find(p => p.id === id)
   if (pl) {
     editName.value = pl.name
-    editDesc.value = pl.desc
+    editDesc.value = pl.desc || ''
+    // 加载歌单中的歌曲
+    await loadPlaylistTracks(id)
   }
 }
 
@@ -879,19 +933,19 @@ const currentTitle = computed(() => {
 const confirmDeletePlaylist = async () => {
   if (!selectedPlaylist.value) return
   try {
-    const res = await fetch(`/playlist/delete/${selectedPlaylist.value.id}`, {
-      method: 'DELETE',
-      headers: { 'Authorization': `Bearer ${token.value}` }
-    })
-    const data = await res.json()
+    // 使用接口9：删除歌单
+    const data = await api.deletePlaylist(selectedPlaylist.value.id)
     if (data.code === 200) {
       // 从列表移除
       playlists.value = playlists.value.filter(p => p.id !== selectedPlaylist.value.id)
       viewMode.value = 'all'
       selectedPlaylistId.value = null
+    } else {
+      alert(data.msg || '删除失败')
     }
   } catch (err) {
     console.error('删除失败', err)
+    alert('删除失败: ' + (err.message || '未知错误'))
   }
   deleteConfirmOpen.value = false
 }
@@ -901,48 +955,103 @@ const openSongDeleteConfirm = (idx) => {
   songDeleteIndex.value = idx
   songDeleteConfirmOpen.value = true
 }
-const confirmDeleteSong = () => {
+const confirmDeleteSong = async () => {
   const idx = songDeleteIndex.value
   if (idx === null || idx === undefined) {
     songDeleteConfirmOpen.value = false
     return
   }
-  playlists.value.forEach(pl => {
-    if (!pl.songs) return
-    pl.songs = pl.songs.filter(j => j !== idx).map(j => j > idx ? j - 1 : j)
-  })
-  songList.value.splice(idx, 1)
-  if (viewMode.value === 'search') {
-    const results = searchResults.value.filter(item => item.i !== idx)
-    searchResults.value = results.map(item => ({
-      s: item.s,
-      i: item.i > idx ? item.i - 1 : item.i
-    }))
+  
+  const song = songList.value[idx]
+  if (!song || !song.id) {
+    songDeleteConfirmOpen.value = false
+    return
   }
-  if (currentIndex.value === idx) {
-    audio.value.pause()
-    currentIndex.value = -1
-    audio.value.src = ''
-    isPlaying.value = false
-    currentTime.value = 0
-    audioDuration.value = 0
-  } else if (currentIndex.value > idx) {
-    currentIndex.value = currentIndex.value - 1
+
+  // 如果当前在歌单视图中，从该歌单中移除歌曲
+  if (viewMode.value === 'playlist' && selectedPlaylist.value) {
+    try {
+      // 使用接口12：从歌单中移除歌曲
+      const data = await api.removeTrackFromPlaylist(selectedPlaylist.value.id, song.id)
+      if (data.code === 200) {
+        // 从歌单的歌曲列表中移除
+        if (selectedPlaylist.value.songs) {
+          selectedPlaylist.value.songs = selectedPlaylist.value.songs.filter(i => i !== idx)
+        }
+        // 如果正在播放被删除的歌曲，停止播放
+        if (currentIndex.value === idx) {
+          audio.value.pause()
+          currentIndex.value = -1
+          audio.value.src = ''
+          isPlaying.value = false
+          currentTime.value = 0
+          audioDuration.value = 0
+        } else if (currentIndex.value > idx) {
+          currentIndex.value = currentIndex.value - 1
+        }
+        // 重新加载歌单歌曲列表
+        await loadPlaylistTracks(selectedPlaylist.value.id)
+      } else {
+        alert(data.msg || '删除失败')
+      }
+    } catch (err) {
+      console.error('删除失败', err)
+      alert('删除失败: ' + (err.message || '未知错误'))
+    }
+  } else {
+    // 如果不在歌单视图中，只从前端列表中移除（不调用后端）
+    // 注意：接口文档中没有删除歌曲本身的接口，只有从歌单中移除的接口
+    songList.value.splice(idx, 1)
+    if (viewMode.value === 'search') {
+      const results = searchResults.value.filter(item => item.i !== idx)
+      searchResults.value = results.map(item => ({
+        s: item.s,
+        i: item.i > idx ? item.i - 1 : item.i
+      }))
+    }
+    if (currentIndex.value === idx) {
+      audio.value.pause()
+      currentIndex.value = -1
+      audio.value.src = ''
+      isPlaying.value = false
+      currentTime.value = 0
+      audioDuration.value = 0
+    } else if (currentIndex.value > idx) {
+      currentIndex.value = currentIndex.value - 1
+    }
   }
+  
   songDeleteConfirmOpen.value = false
   songDeleteIndex.value = null
 }
 
-const toggleEditContent = () => {
+const toggleEditContent = async () => {
   if (!selectedPlaylist.value) return
   if (editing.value) {
-    selectedPlaylist.value.name = editName.value || selectedPlaylist.value.name
-    selectedPlaylist.value.desc = editDesc.value || selectedPlaylist.value.desc
-    editing.value = false
+    // 保存修改
+    try {
+      const data = await api.updatePlaylist({
+        id: selectedPlaylist.value.id,
+        name: editName.value || selectedPlaylist.value.name,
+        sort: selectedPlaylist.value.sort,
+        status: selectedPlaylist.value.status
+      })
+      if (data.code === 200) {
+        selectedPlaylist.value.name = editName.value || selectedPlaylist.value.name
+        editing.value = false
+        // 重新获取歌单列表以确保数据同步
+        await fetchPlaylists()
+      } else {
+        alert(data.msg || '保存失败')
+      }
+    } catch (err) {
+      console.error('保存失败', err)
+      alert('保存失败: ' + (err.message || '未知错误'))
+    }
   } else {
     editing.value = true
     editName.value = selectedPlaylist.value.name
-    editDesc.value = selectedPlaylist.value.desc
+    editDesc.value = selectedPlaylist.value.desc || ''
   }
 }
 
@@ -965,27 +1074,24 @@ const toggleSongInManage = (idx) => {
 
 const saveManageSongs = async () => {
   if (viewMode.value === 'playlist' && selectedPlaylist.value) {
-    const trackIds = Array.from(manageSelection.value).map(i => songList.value[i].id)
+    // 获取选中的歌曲ID列表
+    const selectedIndices = Array.from(manageSelection.value)
+    const trackIds = selectedIndices.map(i => songList.value[i]?.id).filter(id => id)
     
     try {
-      const res = await fetch('/playlist/updateTracks', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token.value}`
-        },
-        body: JSON.stringify({
-          playlistId: selectedPlaylist.value.id,
-          trackIds: trackIds
-        })
-      })
-      const data = await res.json()
+      // 使用接口13：重新排序歌单内歌曲
+      const data = await api.reorderTracks(selectedPlaylist.value.id, trackIds)
       if (data.code === 200) {
-        // 后端更新成功，前端同步（可选）
-        selectedPlaylist.value.songs = Array.from(manageSelection.value)
+        // 更新前端歌单的歌曲列表
+        selectedPlaylist.value.songs = selectedIndices
+        // 重新加载歌单歌曲以确保顺序正确
+        await loadPlaylistTracks(selectedPlaylist.value.id)
+      } else {
+        alert(data.msg || '更新失败')
       }
     } catch (err) {
       console.error('更新歌单失败', err)
+      alert('更新失败: ' + (err.message || '未知错误'))
     }
   }
   manageModalOpen.value = false
@@ -1086,22 +1192,13 @@ const toggleFav = async (idx) => {
   const song = songList.value[idx]
   if (!song.id) return
 
-  try {
-    if (song.fav) {
-      await fetch(`/track/unfav/${song.id}`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token.value}` }
-      })
-    } else {
-      await fetch(`/track/fav/${song.id}`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token.value}` }
-      })
-    }
-    song.fav = !song.fav
-  } catch (err) {
-    console.error('收藏操作失败', err)
-  }
+  // 注意：接口文档中没有专门的收藏/取消收藏接口
+  // 这里暂时保留前端状态切换，实际项目中可能需要后端支持
+  // 或者通过其他方式实现（如使用"我喜欢的"歌单）
+  song.fav = !song.fav
+  
+  // 如果已登录，可以考虑将收藏的歌曲添加到"我喜欢的"歌单
+  // 这里暂时只做前端状态切换
 }
 const toggleCurrentFav = () => {
   if (currentIndex.value === -1 || !songList.value[currentIndex.value]) return;
@@ -1170,15 +1267,8 @@ const saveProfile = async () => {
   }
 
   try {
-    const res = await fetch('/user/profile', {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token.value}`
-      },
-      body: JSON.stringify({ username, email, gender })
-    })
-    const data = await res.json()
+    // 使用接口5：修改用户信息
+    const data = await api.updateProfile({ username, email, gender })
     if (data.code === 200) {
       // 更新前端 currentUser
       currentUser.value = { ...currentUser.value, ...data.data }
@@ -1199,22 +1289,7 @@ const openAvatarDialog = () => {
   }
 }
 
-// 新增：上传文件到后端
-const uploadFile = async (file) => {
-  const formData = new FormData()
-  formData.append('file', file)
-  const res = await fetch('/file/upload', {
-    method: 'POST',
-    headers: { 'Authorization': `Bearer ${token.value}` },
-    body: formData
-  })
-  const data = await res.json()
-  if (data.code === 200) {
-    return data.data.url // 假设返回 { url }
-  } else {
-    throw new Error(data.msg || '上传失败')
-  }
-}
+// 新增：上传文件到后端（已废弃，头像上传直接使用 updateProfile）
 
 // 修改 handleAvatarUpload
 const handleAvatarUpload = async (e) => {
@@ -1222,28 +1297,21 @@ const handleAvatarUpload = async (e) => {
   if (!f || !f.type.startsWith('image/')) return
 
   try {
-    // 1. 上传头像
-    const avatarUrl = await uploadFile(f)
+    // 先创建临时预览
+    const previewUrl = URL.createObjectURL(f)
+    currentUser.value.avatar = previewUrl
     
-    // 2. 更新用户信息
-    const res = await fetch('/user/profile', {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token.value}`
-      },
-      body: JSON.stringify({ avatar: avatarUrl })
-    })
-    const data = await res.json()
-    if (data.code === 200) {
-      currentUser.value.avatar = avatarUrl
-      // 清理旧 blob URL（如果之前是本地预览）
-      if (currentUser.value.avatar?.startsWith('blob:')) {
-        URL.revokeObjectURL(currentUser.value.avatar)
-      }
-    } else {
-      alert(data.msg || '头像更新失败')
-    }
+    // 注意：接口文档中没有专门的头像上传接口
+    // 这里需要先上传文件获取URL，然后通过 updateProfile 更新
+    // 由于接口文档中没有通用文件上传接口，这里暂时只做前端预览
+    // 实际项目中需要后端提供文件上传接口，或者使用第三方存储服务
+    
+    // 临时方案：提示用户功能暂未实现
+    alert('头像上传功能需要后端支持文件上传接口，当前仅支持预览')
+    
+    // 如果需要完整实现，可以这样：
+    // 1. 先上传文件到服务器获取URL（需要后端提供上传接口）
+    // 2. 使用 api.updateProfile({ avatar: url }) 更新用户信息
   } catch (err) {
     console.error(err)
     alert('头像上传失败')
