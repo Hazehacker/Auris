@@ -21,7 +21,9 @@ import { api } from '../api.js'
             <button class="btn green-outline" @click="openAuth('register')">注册</button>
           </template>
         </div>
-        <button class="window-btn">— □ ✕</button>
+        <button class="theme-toggle-btn" @click="toggleTheme" :title="isDarkMode ? '切换到日间模式' : '切换到夜间模式'">
+          {{ isDarkMode ? '☀️' : '🌙' }}
+        </button>
       </div>
     </header>
 
@@ -738,6 +740,20 @@ import { api } from '../api.js'
 import { ref, watch, onMounted, computed, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { api } from '../api.js'
+
+// 主题切换
+const isDarkMode = ref(localStorage.getItem('theme') !== 'light')
+const toggleTheme = () => {
+  isDarkMode.value = !isDarkMode.value
+  localStorage.setItem('theme', isDarkMode.value ? 'dark' : 'light')
+  updateTheme()
+}
+const updateTheme = () => {
+  document.documentElement.setAttribute('data-theme', isDarkMode.value ? 'dark' : 'light')
+}
+onMounted(() => {
+  updateTheme()
+})
 
 // 基本播放数据
 const songList = ref([])
