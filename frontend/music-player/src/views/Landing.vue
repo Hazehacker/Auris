@@ -157,9 +157,9 @@ const enterGuest = () => {
   left: 0;
   width: 100vw;
   height: 100vh;
-  background: #000;
+  background: var(--bg-primary);
   z-index: 9999;
-  color: #fff;
+  color: var(--text-primary);
   overflow: hidden;
 }
 
@@ -180,11 +180,11 @@ const enterGuest = () => {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: rgba(0, 0, 0, 0.4);
+  background: rgba(30, 41, 59, 0.6);
   backdrop-filter: blur(10px);
   padding: 8px 16px;
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--border-color);
 }
 
 .nav-logo-icon {
@@ -195,27 +195,27 @@ const enterGuest = () => {
   height: 24px;
   font-weight: bold;
   font-size: 18px;
-  color: #fff;
+  color: var(--text-primary);
 }
 
 .nav-logo-text {
   font-weight: 600;
   font-size: 16px;
-  color: #fff;
+  color: var(--text-primary);
 }
 
 .nav-links {
   display: flex;
   gap: 8px;
-  background: rgba(0, 0, 0, 0.4);
+  background: rgba(30, 41, 59, 0.6);
   backdrop-filter: blur(10px);
   padding: 8px 12px;
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--border-color);
 }
 
 .nav-link {
-  color: #fff;
+  color: var(--text-primary);
   text-decoration: none;
   padding: 6px 16px;
   font-size: 14px;
@@ -224,7 +224,7 @@ const enterGuest = () => {
 }
 
 .nav-link:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(96, 165, 250, 0.2);
 }
 
 /* 主内容区 */
@@ -249,7 +249,7 @@ const enterGuest = () => {
   font-size: 3.5rem;
   font-weight: 700;
   line-height: 1.2;
-  color: #fff;
+  color: var(--text-primary);
   margin: 0;
   text-shadow: 0 2px 20px rgba(0, 0, 0, 0.5);
   letter-spacing: -0.02em;
@@ -274,25 +274,25 @@ const enterGuest = () => {
 }
 
 .btn-white {
-  background: #fff;
-  color: #000;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
 }
 
 .btn-white:hover {
-  background: #f0f0f0;
+  background: var(--bg-tertiary);
   transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(255, 255, 255, 0.2);
+  box-shadow: 0 8px 24px rgba(var(--text-primary-rgb), 0.1);
 }
 
 .btn-purple {
-  background: #9333ea;
-  color: #fff;
+  background: var(--primary);
+  color: white;
 }
 
 .btn-purple:hover {
-  background: #7e22ce;
+  background: var(--primary-600);
   transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(147, 51, 234, 0.4);
+  box-shadow: 0 8px 24px rgba(96, 165, 250, 0.4);
 }
 
 /* 响应式设计 */

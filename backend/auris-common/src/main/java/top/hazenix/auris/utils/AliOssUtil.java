@@ -9,7 +9,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import top.hazenix.auris.properties.AliOssProperties;
-;
 
 
 import java.io.ByteArrayInputStream;
