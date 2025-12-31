@@ -62,7 +62,10 @@ import { api } from './api.js'
           <li class="side-item fav" role="button" tabindex="0" @click="setView('fav')" @keydown.enter="setView('fav')" :class="{ active: viewMode === 'fav' }">❤ 我喜欢的 <span class="count">({{ favCount }})</span></li>
 
           <!-- 歌单列表（可展开） -->
-          <li class="side-item playlists" role="button" tabindex="0" @click="playlistsOpen = !playlistsOpen">▸ 歌单列表</li>
+          <li class="side-item playlists" role="button" tabindex="0" @click="playlistsOpen = !playlistsOpen">
+            <span class="expand-icon">{{ playlistsOpen ? '▾' : '▸' }}</span>
+            <span class="playlists-title">歌单列表</span>
+          </li>
           <ul v-if="playlistsOpen" class="playlist-children">
             <li v-if="!playlists.length" class="side-item empty-note">（当前无歌单）</li>
             <li v-for="pl in playlists" :key="pl.id" class="side-item playlist-item" :class="{ active: selectedPlaylistId === pl.id }" role="button" tabindex="0">
@@ -1254,7 +1257,7 @@ const loadPlaylistTracks = async (playlistId) => {
 
 // 歌单相关
 const playlists = ref([])
-const playlistsOpen = ref(false)
+const playlistsOpen = ref(true) // 默认展开
 const selectedPlaylistId = ref(null)
 const editing = ref(false)
 const editName = ref('')
@@ -1326,7 +1329,7 @@ const confirmCreatePlaylist = async () => {
   }
 
   creatingPlaylist.value = true
-  
+
   try {
     // 使用接口7：创建新歌单
     const data = await api.createPlaylist({ 
