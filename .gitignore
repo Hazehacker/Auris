@@ -121,3 +121,5 @@ build/
 # 如果用了 Docker，可以加：
 docker-compose.yml
 Dockerfile
+# 如果需要保密转发逻辑
+nginx.conf
