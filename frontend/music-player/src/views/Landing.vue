@@ -246,7 +246,7 @@ const enterGuest = () => {
 }
 
 .landing-title {
-  font-size: 3.5rem;
+  font-size: 3.4rem;
   font-weight: 700;
   line-height: 1.2;
   color: var(--text-primary);

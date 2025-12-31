@@ -4,6 +4,15 @@ const BASE_URL = import.meta.env.PROD
   ? 'https://auris.hazenix.top/api' 
   : 'http://localhost:9090'
 
+// 确保路径拼接正确，避免双斜杠或缺少斜杠
+function buildUrl(baseUrl, path) {
+  // 移除 baseUrl 末尾的斜杠
+  const base = baseUrl.replace(/\/+$/, '')
+  // 确保 path 以斜杠开头
+  const urlPath = path.startsWith('/') ? path : '/' + path
+  return base + urlPath
+}
+
 export const api = {
   async request(url, options = {}) {
     const token = localStorage.getItem('token')
@@ -17,7 +26,9 @@ export const api = {
       delete headers['Content-Type']
     }
     
-    const res = await fetch(BASE_URL + url, { ...options, headers })
+    // 使用 buildUrl 确保路径拼接正确
+    const fullUrl = buildUrl(BASE_URL, url)
+    const res = await fetch(fullUrl, { ...options, headers })
     
     // 检查响应状态
     if (!res.ok) {
