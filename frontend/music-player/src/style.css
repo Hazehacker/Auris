@@ -853,25 +853,44 @@ button:focus-visible {
 	white-space: nowrap;
 }
 
-.playlist-edit-btn {
+.playlist-actions {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	opacity: 0;
+	transition: opacity 0.2s;
+}
+
+.playlist-item:hover .playlist-actions {
+	opacity: 1;
+}
+
+.playlist-edit-btn,
+.playlist-delete-btn {
 	background: transparent;
 	border: none;
 	cursor: pointer;
 	font-size: 14px;
 	padding: 4px 6px;
 	border-radius: 4px;
-	opacity: 0;
 	transition: all 0.2s;
 	flex-shrink: 0;
-	margin-right: 8px;
-}
-
-.playlist-item:hover .playlist-edit-btn {
-	opacity: 1;
+	display: flex;
+	align-items: center;
+	justify-content: center;
 }
 
 .playlist-edit-btn:hover {
 	background-color: #f3f4f6;
+	transform: scale(1.1);
+}
+
+.playlist-delete-btn {
+	color: #ef4444;
+}
+
+.playlist-delete-btn:hover {
+	background-color: #fee2e2;
 	transform: scale(1.1);
 }
 .sidebar-empty {

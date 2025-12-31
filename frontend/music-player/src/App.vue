@@ -70,11 +70,18 @@ import { api } from './api.js'
             <li v-if="!playlists.length" class="side-item empty-note">（当前无歌单）</li>
             <li v-for="pl in playlists" :key="pl.id" class="side-item playlist-item" :class="{ active: selectedPlaylistId === pl.id }" role="button" tabindex="0">
               <span @click.stop="selectPlaylist(pl.id)" class="playlist-name">{{ pl.name }} <span class="count">({{ pl.songs ? pl.songs.length : 0 }})</span></span>
-              <button 
-                class="playlist-edit-btn" 
-                @click.stop="openEditPlaylistNameModal(pl.id)"
-                :title="'修改歌单名称'"
-              >✏️</button>
+              <div class="playlist-actions">
+                <button 
+                  class="playlist-edit-btn" 
+                  @click.stop="openEditPlaylistNameModal(pl.id)"
+                  :title="'修改歌单名称'"
+                >✏️</button>
+                <button 
+                  class="playlist-delete-btn" 
+                  @click.stop="openDeletePlaylistConfirm(pl.id)"
+                  :title="'删除歌单'"
+                >🗑️</button>
+              </div>
             </li>
           </ul>
         </ul>
@@ -425,7 +432,10 @@ import { api } from './api.js'
     <div v-if="deleteConfirmOpen" class="modal-overlay" @click.self="deleteConfirmOpen = false">
       <div class="modal">
         <h3>确认删除歌单？</h3>
-        <p class="muted">删除后歌单内歌曲不会从单曲集合中移除</p>
+        <p class="muted">
+          确定要删除歌单"<strong>{{ deletingPlaylistId ? playlists.find(p => p.id === deletingPlaylistId)?.name : selectedPlaylist?.name || '' }}</strong>"吗？
+        </p>
+        <p class="muted" style="font-size: 0.85rem; margin-top: 0.5rem;">删除后歌单内歌曲不会从单曲集合中移除</p>
         <div class="modal-actions">
           <button class="btn green-outline" @click="deleteConfirmOpen = false">取消</button>
           <button class="btn danger" @click="confirmDeletePlaylist">确认删除</button>
@@ -1265,6 +1275,7 @@ const editDesc = ref('')
 const manageModalOpen = ref(false)
 const manageSelection = ref(new Set())
 const deleteConfirmOpen = ref(false)
+const deletingPlaylistId = ref(null)
 
 // 修改歌单名称相关状态
 const editPlaylistNameModalOpen = ref(false)
@@ -1887,16 +1898,35 @@ const currentTitle = computed(() => {
   return '示例歌单名'
 })
 
+// 打开删除歌单确认对话框
+const openDeletePlaylistConfirm = (playlistId) => {
+  if (!token.value) {
+    alert('请先登录')
+    openAuth('login')
+    return
+  }
+  deletingPlaylistId.value = playlistId
+  deleteConfirmOpen.value = true
+}
+
 const confirmDeletePlaylist = async () => {
-  if (!selectedPlaylist.value) return
+  const playlistId = deletingPlaylistId.value || selectedPlaylist.value?.id
+  if (!playlistId) {
+    deleteConfirmOpen.value = false
+    return
+  }
+  
   try {
     // 使用接口9：删除歌单
-    const data = await api.deletePlaylist(selectedPlaylist.value.id)
+    const data = await api.deletePlaylist(playlistId)
     if (data.code === 200) {
       // 从列表移除
-      playlists.value = playlists.value.filter(p => p.id !== selectedPlaylist.value.id)
-      viewMode.value = 'all'
-      selectedPlaylistId.value = null
+      playlists.value = playlists.value.filter(p => p.id !== playlistId)
+      // 如果删除的是当前选中的歌单，切换到其他视图
+      if (selectedPlaylistId.value === playlistId) {
+        viewMode.value = 'all'
+        selectedPlaylistId.value = null
+      }
     } else {
       alert(data.msg || '删除失败')
     }
@@ -1905,6 +1935,7 @@ const confirmDeletePlaylist = async () => {
     alert('删除失败: ' + (err.message || '未知错误'))
   }
   deleteConfirmOpen.value = false
+  deletingPlaylistId.value = null
 }
 
 // 单曲删除相关
