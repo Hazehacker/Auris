@@ -9,7 +9,7 @@ export const api = {
     const token = localStorage.getItem('token')
     const headers = {
       ...(options.headers || {}),
-      ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+      ...(token ? { 'authentication': token } : {})
     }
     
     // 如果是 FormData，不要设置 Content-Type，让浏览器自动设置
@@ -18,7 +18,31 @@ export const api = {
     }
     
     const res = await fetch(BASE_URL + url, { ...options, headers })
-    return res.json()
+    
+    // 检查响应状态
+    if (!res.ok) {
+      // 尝试解析错误响应
+      const contentType = res.headers.get('content-type')
+      if (contentType && contentType.includes('application/json')) {
+        const errorData = await res.json().catch(() => ({}))
+        throw new Error(errorData.msg || errorData.message || `请求失败: ${res.status}`)
+      } else {
+        throw new Error(`请求失败: ${res.status} ${res.statusText}`)
+      }
+    }
+    
+    // 检查响应体是否为空
+    const text = await res.text()
+    if (!text) {
+      return null
+    }
+    
+    // 安全地解析JSON
+    try {
+      return JSON.parse(text)
+    } catch (e) {
+      throw new Error(`响应解析失败: ${e.message}`)
+    }
   },
 
   // ========== 用户相关接口 ==========

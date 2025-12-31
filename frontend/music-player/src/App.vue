@@ -476,6 +476,9 @@ onMounted(() => {
   if (token.value) {
     fetchUserInfo().then(() => {
       // 用户信息加载完成后，会自动加载歌单（在 fetchUserInfo 中调用）
+      // 如果fetchUserInfo成功，会自动关闭开屏
+    }).catch(() => {
+      // 如果获取用户信息失败，保持开屏显示
     })
   }
 })
@@ -600,8 +603,14 @@ const closeAuth = () => {
 // 首屏核心配置（核心：仅登录/注册成功、游客点击 才关闭）
 const landingOpen = ref(true)
 const landingFadeout = ref(false)
-// 不再持久化首屏关闭状态（每次访问都显示）
-const setLandingDismissed = (v = true) => { /* noop */ }
+// 持久化首屏关闭状态
+const setLandingDismissed = (v = true) => {
+  if (v) {
+    localStorage.setItem('landing-dismissed', '1')
+  } else {
+    localStorage.removeItem('landing-dismissed')
+  }
+}
 
 // 游客模式：点击后关闭开屏
 const enterGuest = () => {
@@ -699,14 +708,27 @@ const fetchUserInfo = async () => {
       currentUser.value = data.data
       // 获取用户信息后加载歌单
       await fetchPlaylists()
+      // 如果用户信息获取成功，说明已登录，关闭开屏
+      if (landingOpen.value) {
+        landingFadeout.value = true
+        setTimeout(() => {
+          landingOpen.value = false
+          setLandingDismissed(true)
+          viewMode.value = 'profile'
+        }, 500)
+      }
     } else {
       setToken('')
       currentUser.value = null
+      // token无效，清除登录状态标记
+      setLandingDismissed(false)
     }
   } catch (e) {
     console.error(e)
     setToken('')
     currentUser.value = null
+    // token无效，清除登录状态标记
+    setLandingDismissed(false)
   }
 }
 
@@ -718,6 +740,8 @@ const logout = async () => {
   currentUser.value = null
   playlists.value = []
   viewMode.value = 'all'
+  // 退出登录时清除登录状态标记
+  setLandingDismissed(false)
 }
 
 // 视图控制
