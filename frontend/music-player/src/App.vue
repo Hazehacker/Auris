@@ -65,7 +65,14 @@ import { api } from './api.js'
           <li class="side-item playlists" role="button" tabindex="0" @click="playlistsOpen = !playlistsOpen">▸ 歌单列表</li>
           <ul v-if="playlistsOpen" class="playlist-children">
             <li v-if="!playlists.length" class="side-item empty-note">（当前无歌单）</li>
-            <li v-for="pl in playlists" :key="pl.id" class="side-item playlist-item" :class="{ active: selectedPlaylistId === pl.id }" role="button" tabindex="0" @click.stop="selectPlaylist(pl.id)">{{ pl.name }} <span class="count">({{ pl.songs ? pl.songs.length : 0 }})</span></li>
+            <li v-for="pl in playlists" :key="pl.id" class="side-item playlist-item" :class="{ active: selectedPlaylistId === pl.id }" role="button" tabindex="0">
+              <span @click.stop="selectPlaylist(pl.id)" class="playlist-name">{{ pl.name }} <span class="count">({{ pl.songs ? pl.songs.length : 0 }})</span></span>
+              <button 
+                class="playlist-edit-btn" 
+                @click.stop="openEditPlaylistNameModal(pl.id)"
+                :title="'修改歌单名称'"
+              >✏️</button>
+            </li>
           </ul>
         </ul>
         <div class="sidebar-empty">(歌单操作)</div>
@@ -157,11 +164,42 @@ import { api } from './api.js'
         </thead>
         <tbody>
           <tr v-for="({ s, i }, idx) in favSongs" :key="i" :class="{ active: currentIndex === i }" @dblclick="playSong(i)">
-            <td class="title-col">{{ s.name || '未知' }}</td>
+            <td class="title-col">
+              <div class="title-with-play">
+                <button 
+                  class="play-icon-btn" 
+                  @click.stop="handlePlayButtonClick(i)" 
+                  :title="currentIndex === i && isPlaying ? '暂停' : '播放 ' + (s.name || '歌曲')"
+                  :disabled="!s.url || s.url === ''"
+                >
+                  {{ currentIndex === i && isPlaying ? '⏸' : '▶' }}
+                </button>
+                <span class="song-title-text">{{ s.name || '未知' }}</span>
+              </div>
+            </td>
             <td class="time-col">{{ s.duration ? formatTime(s.duration) : '—' }}</td>
             <td class="artist-col">{{ s.artist || '—' }}</td>
             <td class="fav-col"><button :class="['fav-btn', { filled: s.fav }]" @click.stop="toggleFav(i)">{{ s.fav ? '❤' : '♡' }}</button></td>
-            <td class="action-col"><button class="icon-btn" @click.stop="openSongDeleteConfirm(i)" :title="'删除 ' + (s.name || '歌曲')">🗑</button></td>
+            <td class="action-col">
+              <div class="action-buttons">
+                <button 
+                  v-if="!s.url || s.url === ''" 
+                  class="icon-btn action-btn" 
+                  @click.stop="openUploadAudioModal(i)" 
+                  :title="'上传音频 ' + (s.name || '歌曲')"
+                >📤</button>
+                <button 
+                  class="icon-btn action-btn" 
+                  @click.stop="openUploadCoverModal(i)" 
+                  :title="'上传封面 ' + (s.name || '歌曲')"
+                >🖼️</button>
+                <button 
+                  class="icon-btn action-btn danger" 
+                  @click.stop="openSongDeleteConfirm(i)" 
+                  :title="'删除 ' + (s.name || '歌曲')"
+                >🗑</button>
+              </div>
+            </td>
           </tr>
           <tr v-if="favSongs.length === 0">
             <td colspan="5" class="empty">暂无收藏的歌曲。</td>
@@ -224,8 +262,12 @@ import { api } from './api.js'
             </template>
             
             <div class="meta-actions" :class="{ 'collection-actions': viewMode === 'all' || viewMode === 'fav' }">
+              <!-- 添加歌曲按钮（仅歌单模式） -->
+              <button v-if="viewMode === 'playlist'" class="btn green" :disabled="!selectedPlaylist" @click="openAddTrackModal">
+                ＋ 添加歌曲
+              </button>
               <!-- 管理歌曲按钮（所有模式启用） -->
-              <button class="btn green" @click="openManageSongs">管理歌曲</button>
+              <button class="btn green-outline" @click="openManageSongs">管理歌曲</button>
               <!-- 编辑内容按钮（仅歌单模式） -->
               <button v-if="viewMode === 'playlist'" class="btn green-outline" :disabled="!selectedPlaylist" @click="toggleEditContent">{{ editing ? '保存' : '编辑内容' }}</button>
               <button v-if="editing && selectedPlaylist" class="btn danger" @click="deleteConfirmOpen = true">删除歌单</button>
@@ -253,11 +295,42 @@ import { api } from './api.js'
             </thead>
             <tbody>
               <tr v-for="({ s, i }, idx) in displayed" :key="i" :class="{ active: currentIndex === i }" @dblclick="playSong(i)">
-                <td class="title-col">{{ s.name || '未知' }}</td>
+                <td class="title-col">
+                  <div class="title-with-play">
+                    <button 
+                      class="play-icon-btn" 
+                      @click.stop="handlePlayButtonClick(i)" 
+                      :title="currentIndex === i && isPlaying ? '暂停' : '播放 ' + (s.name || '歌曲')"
+                      :disabled="!s.url || s.url === ''"
+                    >
+                      {{ currentIndex === i && isPlaying ? '⏸' : '▶' }}
+                    </button>
+                    <span class="song-title-text">{{ s.name || '未知' }}</span>
+                  </div>
+                </td>
                 <td class="time-col">{{ s.duration ? formatTime(s.duration) : '—' }}</td>
                 <td class="artist-col">{{ s.artist || '—' }}</td>
                 <td class="fav-col"><button :class="['fav-btn', { filled: s.fav }]" @click.stop="toggleFav(i)">{{ s.fav ? '❤' : '♡' }}</button></td>
-                <td class="action-col"><button class="icon-btn" @click.stop="openSongDeleteConfirm(i)" :title="'删除 ' + (s.name || '歌曲')">🗑</button></td>
+                <td class="action-col">
+                  <div class="action-buttons">
+                    <button 
+                      v-if="!s.url || s.url === ''" 
+                      class="icon-btn action-btn" 
+                      @click.stop="openUploadAudioModal(i)" 
+                      :title="'上传音频 ' + (s.name || '歌曲')"
+                    >📤</button>
+                    <button 
+                      class="icon-btn action-btn" 
+                      @click.stop="openUploadCoverModal(i)" 
+                      :title="'上传封面 ' + (s.name || '歌曲')"
+                    >🖼️</button>
+                    <button 
+                      class="icon-btn action-btn danger" 
+                      @click.stop="openSongDeleteConfirm(i)" 
+                      :title="'删除 ' + (s.name || '歌曲')"
+                    >🗑</button>
+                  </div>
+                </td>
               </tr>
               <tr v-if="displayed.length === 0">
                 <td colspan="5" class="empty">暂无歌曲可显示。</td>
@@ -360,6 +433,297 @@ import { api } from './api.js'
     <!-- 隐藏上传输入，保留可访问性 -->
     <input id="file-ctrl" ref="fileInput" class="sr-only" type="file" accept=".mp3,.wav" multiple @change="handleFileUpload" />
     <input id="cover-ctrl" ref="coverInput" class="sr-only" type="file" accept="image/*" @change="handleCoverUpload" />
+
+    <!-- 修改歌单名称模态 -->
+    <div v-if="editPlaylistNameModalOpen" class="modal-overlay" @click.self="closeEditPlaylistNameModal">
+      <div class="modal edit-playlist-name-modal">
+        <h3>修改歌单名称</h3>
+        <div class="edit-playlist-name-form">
+          <label class="form-row">
+            <span class="form-label">歌单名称 <span class="required">*</span></span>
+            <input 
+              ref="editPlaylistNameInput" 
+              v-model="editPlaylistNameForm.name" 
+              placeholder="请输入歌单名称" 
+              maxlength="50"
+              @keydown.enter="confirmEditPlaylistName"
+            />
+            <div class="form-error" v-if="editPlaylistNameError.name">{{ editPlaylistNameError.name }}</div>
+          </label>
+          <div class="form-error" v-if="editPlaylistNameError.general">{{ editPlaylistNameError.general }}</div>
+          <div class="modal-actions">
+            <button class="btn green-outline" @click="closeEditPlaylistNameModal" :disabled="editingPlaylistName">取消</button>
+            <button class="btn green" @click="confirmEditPlaylistName" :disabled="editingPlaylistName">
+              <span v-if="editingPlaylistName">保存中...</span>
+              <span v-else>保存</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 上传封面模态 -->
+    <div v-if="uploadCoverModalOpen" class="modal-overlay" @click.self="closeUploadCoverModal">
+      <div class="modal upload-cover-modal">
+        <h3>上传封面图片</h3>
+        <div class="upload-cover-form">
+          <div class="form-section">
+            <h4 class="form-section-title">歌曲信息</h4>
+            <div class="song-info-display">
+              <div class="info-item">
+                <span class="info-label">歌曲名称：</span>
+                <span class="info-value">{{ uploadCoverSong?.name || '未知' }}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">歌手：</span>
+                <span class="info-value">{{ uploadCoverSong?.artist || '未知' }}</span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="form-section">
+            <h4 class="form-section-title">封面图片</h4>
+            <div class="file-upload-area">
+              <input 
+                ref="uploadCoverFileInput" 
+                type="file" 
+                accept="image/*" 
+                @change="handleUploadCoverFileSelect"
+                class="sr-only"
+                id="upload-cover-file-input"
+              />
+              <div v-if="!uploadCoverForm.file" class="file-upload-placeholder" @click="openUploadCoverFileDialog">
+                <span class="upload-icon">🖼️</span>
+                <span>点击选择封面图片</span>
+                <span class="upload-hint">支持 JPG、PNG、GIF 等图片格式</span>
+              </div>
+              <div v-else class="file-upload-selected">
+                <div class="file-info">
+                  <img :src="uploadCoverForm.preview" alt="封面预览" class="cover-preview-large" />
+                  <div class="file-details">
+                    <div class="file-name">{{ uploadCoverForm.file.name }}</div>
+                    <div class="file-size">{{ formatFileSize(uploadCoverForm.file.size) }}</div>
+                  </div>
+                </div>
+                <button class="btn small" @click="removeUploadCoverFile">移除</button>
+              </div>
+            </div>
+          </div>
+          
+          <div class="form-error" v-if="uploadCoverError">{{ uploadCoverError }}</div>
+          <div class="modal-actions">
+            <button class="btn green-outline" @click="closeUploadCoverModal" :disabled="uploadingCover">取消</button>
+            <button class="btn green" @click="confirmUploadCover" :disabled="uploadingCover || !uploadCoverForm.file">
+              <span v-if="uploadingCover">上传中...</span>
+              <span v-else>上传封面</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 上传音频模态 -->
+    <div v-if="uploadAudioModalOpen" class="modal-overlay" @click.self="closeUploadAudioModal">
+      <div class="modal upload-audio-modal">
+        <h3>上传音频文件</h3>
+        <div class="upload-audio-form">
+          <div class="form-section">
+            <h4 class="form-section-title">歌曲信息</h4>
+            <div class="song-info-display">
+              <div class="info-item">
+                <span class="info-label">歌曲名称：</span>
+                <span class="info-value">{{ uploadAudioSong?.name || '未知' }}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">歌手：</span>
+                <span class="info-value">{{ uploadAudioSong?.artist || '未知' }}</span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="form-section">
+            <h4 class="form-section-title">音频文件</h4>
+            <div class="file-upload-area">
+              <input 
+                ref="uploadAudioFileInput" 
+                type="file" 
+                accept="audio/*,.mp3,.wav" 
+                @change="handleUploadAudioFileSelect"
+                class="sr-only"
+                id="upload-audio-file-input"
+              />
+              <div v-if="!uploadAudioForm.file" class="file-upload-placeholder" @click="openUploadAudioFileDialog">
+                <span class="upload-icon">📁</span>
+                <span>点击选择音频文件</span>
+                <span class="upload-hint">支持 MP3、WAV 格式</span>
+              </div>
+              <div v-else class="file-upload-selected">
+                <div class="file-info">
+                  <span class="file-icon">🎵</span>
+                  <div class="file-details">
+                    <div class="file-name">{{ uploadAudioForm.file.name }}</div>
+                    <div class="file-size">{{ formatFileSize(uploadAudioForm.file.size) }}</div>
+                  </div>
+                </div>
+                <button class="btn small" @click="removeUploadAudioFile">移除</button>
+              </div>
+            </div>
+          </div>
+          
+          <div class="form-error" v-if="uploadAudioError">{{ uploadAudioError }}</div>
+          <div class="modal-actions">
+            <button class="btn green-outline" @click="closeUploadAudioModal" :disabled="uploadingAudio">取消</button>
+            <button class="btn green" @click="confirmUploadAudio" :disabled="uploadingAudio || !uploadAudioForm.file">
+              <span v-if="uploadingAudio">上传中...</span>
+              <span v-else>上传音频</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 添加歌曲模态 -->
+    <div v-if="addTrackModalOpen" class="modal-overlay" @click.self="closeAddTrackModal">
+      <div class="modal add-track-modal">
+        <h3>添加歌曲</h3>
+        <div class="add-track-form">
+          <div class="form-section">
+            <h4 class="form-section-title">歌曲信息</h4>
+            <label class="form-row">
+              <span class="form-label">歌曲名称 <span class="required">*</span></span>
+              <input 
+                ref="trackTitleInput" 
+                v-model="newTrackForm.title" 
+                placeholder="请输入歌曲名称" 
+                maxlength="100"
+                @keydown.enter="confirmAddTrack"
+              />
+              <div class="form-error" v-if="addTrackError.title">{{ addTrackError.title }}</div>
+            </label>
+            <label class="form-row">
+              <span class="form-label">歌手 <span class="required">*</span></span>
+              <input 
+                v-model="newTrackForm.artist" 
+                placeholder="请输入歌手名称" 
+                maxlength="50"
+                @keydown.enter="confirmAddTrack"
+              />
+              <div class="form-error" v-if="addTrackError.artist">{{ addTrackError.artist }}</div>
+            </label>
+            <label class="form-row">
+              <span class="form-label">专辑</span>
+              <input 
+                v-model="newTrackForm.album" 
+                placeholder="请输入专辑名称（可选）" 
+                maxlength="50"
+              />
+            </label>
+          </div>
+          
+          <div class="form-section">
+            <h4 class="form-section-title">音频文件</h4>
+            <div class="file-upload-area">
+              <input 
+                ref="trackFileInput" 
+                type="file" 
+                accept="audio/*,.mp3,.wav" 
+                @change="handleTrackFileSelect"
+                class="sr-only"
+                id="track-file-input"
+              />
+              <div v-if="!newTrackForm.file" class="file-upload-placeholder" @click="openTrackFileDialog">
+                <span class="upload-icon">📁</span>
+                <span>点击选择音频文件（可选）</span>
+                <span class="upload-hint">支持 MP3、WAV 格式</span>
+              </div>
+              <div v-else class="file-upload-selected">
+                <div class="file-info">
+                  <span class="file-icon">🎵</span>
+                  <div class="file-details">
+                    <div class="file-name">{{ newTrackForm.file.name }}</div>
+                    <div class="file-size">{{ formatFileSize(newTrackForm.file.size) }}</div>
+                  </div>
+                </div>
+                <button class="btn small" @click="removeTrackFile">移除</button>
+              </div>
+            </div>
+          </div>
+          
+          <div class="form-section">
+            <h4 class="form-section-title">封面图片（可选）</h4>
+            <div class="file-upload-area">
+              <input 
+                ref="trackCoverInput" 
+                type="file" 
+                accept="image/*" 
+                @change="handleTrackCoverSelect"
+                class="sr-only"
+                id="track-cover-input"
+              />
+              <div v-if="!newTrackForm.coverFile" class="file-upload-placeholder" @click="openTrackCoverDialog">
+                <span class="upload-icon">🖼️</span>
+                <span>点击选择封面图片（可选）</span>
+              </div>
+              <div v-else class="file-upload-selected">
+                <div class="file-info">
+                  <img :src="newTrackForm.coverPreview" alt="封面预览" class="cover-preview" />
+                  <div class="file-details">
+                    <div class="file-name">{{ newTrackForm.coverFile.name }}</div>
+                  </div>
+                </div>
+                <button class="btn small" @click="removeTrackCover">移除</button>
+              </div>
+            </div>
+          </div>
+          
+          <div class="form-error" v-if="addTrackError.general">{{ addTrackError.general }}</div>
+          <div class="modal-actions">
+            <button class="btn green-outline" @click="closeAddTrackModal" :disabled="addingTrack">取消</button>
+            <button class="btn green" @click="confirmAddTrack" :disabled="addingTrack">
+              <span v-if="addingTrack">添加中...</span>
+              <span v-else>添加歌曲</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 创建歌单模态 -->
+    <div v-if="createPlaylistModalOpen" class="modal-overlay" @click.self="closeCreatePlaylistModal">
+      <div class="modal create-playlist-modal">
+        <h3>创建新歌单</h3>
+        <div class="create-playlist-form">
+          <label class="form-row">
+            <span class="form-label">歌单名称 <span class="required">*</span></span>
+            <input 
+              ref="playlistNameInput" 
+              v-model="newPlaylistForm.name" 
+              placeholder="请输入歌单名称" 
+              maxlength="50"
+              @keydown.enter="confirmCreatePlaylist"
+            />
+            <div class="form-error" v-if="createPlaylistError.name">{{ createPlaylistError.name }}</div>
+          </label>
+          <label class="form-row">
+            <span class="form-label">歌单描述</span>
+            <textarea 
+              v-model="newPlaylistForm.desc" 
+              placeholder="请输入歌单描述（可选）" 
+              rows="3"
+              maxlength="200"
+            ></textarea>
+          </label>
+          <div class="form-error" v-if="createPlaylistError.general">{{ createPlaylistError.general }}</div>
+          <div class="modal-actions">
+            <button class="btn green-outline" @click="closeCreatePlaylistModal" :disabled="creatingPlaylist">取消</button>
+            <button class="btn green" @click="confirmCreatePlaylist" :disabled="creatingPlaylist">
+              <span v-if="creatingPlaylist">创建中...</span>
+              <span v-else>创建</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- 登录 / 注册 模态（全局唯一，开屏/内部共用 ✅ 核心统一） -->
     <div v-if="authModalOpen" class="modal-overlay" @click.self="closeAuth">
@@ -803,13 +1167,17 @@ const handleFileUpload = async (e) => {
   if (!selectedPlaylistId.value) {
     const create = confirm('请先选择或创建一个歌单，是否现在创建？')
     if (create) {
-      await createPlaylist()
-      if (!selectedPlaylistId.value) return
+      // 打开创建歌单模态，用户创建完成后会自动选中新歌单
+      openCreatePlaylistModal()
+      // 提示用户创建完成后可以继续上传
+      alert('请先创建歌单，创建完成后可以继续上传歌曲')
+      return
     } else {
       return
     }
   }
 
+  // 上传文件到选中的歌单
   for (const file of files) {
     if (!['audio/mpeg', 'audio/wav', 'audio/mp3'].includes(file.type)) continue
 
@@ -895,28 +1263,79 @@ const manageModalOpen = ref(false)
 const manageSelection = ref(new Set())
 const deleteConfirmOpen = ref(false)
 
-const createPlaylist = async () => {
+// 修改歌单名称相关状态
+const editPlaylistNameModalOpen = ref(false)
+const editingPlaylistName = ref(false)
+const editPlaylistNameForm = ref({ name: '' })
+const editPlaylistNameError = ref({ name: '', general: '' })
+const editPlaylistNameInput = ref(null)
+const editingPlaylistId = ref(null)
+
+// 创建歌单相关状态
+const createPlaylistModalOpen = ref(false)
+const creatingPlaylist = ref(false)
+const newPlaylistForm = ref({ name: '', desc: '' })
+const createPlaylistError = ref({ name: '', general: '' })
+const playlistNameInput = ref(null)
+
+// 打开创建歌单模态
+const openCreatePlaylistModal = () => {
   if (!token.value) {
     alert('请先登录')
     openAuth('login')
     return
   }
+  // 重置表单和错误
+  newPlaylistForm.value = { name: '', desc: '' }
+  createPlaylistError.value = { name: '', general: '' }
+  createPlaylistModalOpen.value = true
+  // 自动聚焦到名称输入框
+  nextTick(() => {
+    try { playlistNameInput.value && playlistNameInput.value.focus() } catch (e) {}
+  })
+}
 
-  const base = '新建歌单'
-  let name = base
-  let i = 1
-  while (playlists.value.some(p => p.name === name)) {
-    name = `${base} (${i})`
-    i++
+// 关闭创建歌单模态
+const closeCreatePlaylistModal = () => {
+  if (creatingPlaylist.value) return // 创建中时不允许关闭
+  createPlaylistModalOpen.value = false
+  newPlaylistForm.value = { name: '', desc: '' }
+  createPlaylistError.value = { name: '', general: '' }
+}
+
+// 确认创建歌单
+const confirmCreatePlaylist = async () => {
+  // 重置错误
+  createPlaylistError.value = { name: '', general: '' }
+  
+  // 验证表单
+  const name = newPlaylistForm.value.name.trim()
+  if (!name) {
+    createPlaylistError.value.name = '歌单名称不能为空'
+    return
+  }
+  if (name.length > 50) {
+    createPlaylistError.value.name = '歌单名称不能超过50个字符'
+    return
+  }
+  
+  // 检查名称是否重复
+  if (playlists.value.some(p => p.name === name)) {
+    createPlaylistError.value.name = '歌单名称已存在，请使用其他名称'
+    return
   }
 
+  creatingPlaylist.value = true
+  
   try {
     // 使用接口7：创建新歌单
     const data = await api.createPlaylist({ 
-      name, 
+      name: name, 
+      desc: newPlaylistForm.value.desc.trim() || undefined,
       sort: 1, 
       status: true 
     })
+    
     if (data.code === 200) {
       // 重新获取歌单列表
       await fetchPlaylists()
@@ -925,10 +1344,521 @@ const createPlaylist = async () => {
       if (newPlaylist) {
         selectPlaylist(newPlaylist.id)
       }
+      // 关闭模态
+      createPlaylistModalOpen.value = false
+      newPlaylistForm.value = { name: '', desc: '' }
+    } else {
+      createPlaylistError.value.general = data.msg || '创建失败，请重试'
     }
   } catch (err) {
     console.error('创建歌单失败', err)
-    alert('创建歌单失败: ' + (err.message || '未知错误'))
+    createPlaylistError.value.general = err.message || '网络错误，请重试'
+  } finally {
+    creatingPlaylist.value = false
+  }
+}
+
+// 保持向后兼容：createPlaylist 现在打开模态
+const createPlaylist = openCreatePlaylistModal
+
+// 添加歌曲相关状态
+const addTrackModalOpen = ref(false)
+const addingTrack = ref(false)
+const newTrackForm = ref({ 
+  title: '', 
+  artist: '', 
+  album: '', 
+  file: null,
+  coverFile: null,
+  coverPreview: null
+})
+const addTrackError = ref({ title: '', artist: '', general: '' })
+const trackFileInput = ref(null)
+const trackCoverInput = ref(null)
+const trackTitleInput = ref(null)
+
+// 打开添加歌曲模态
+const openAddTrackModal = () => {
+  if (!token.value) {
+    alert('请先登录')
+    openAuth('login')
+    return
+  }
+  if (!selectedPlaylistId.value) {
+    alert('请先选择一个歌单')
+    return
+  }
+  // 重置表单和错误
+  newTrackForm.value = { 
+    title: '', 
+    artist: '', 
+    album: '', 
+    file: null,
+    coverFile: null,
+    coverPreview: null
+  }
+  addTrackError.value = { title: '', artist: '', general: '' }
+  addTrackModalOpen.value = true
+  // 自动聚焦到标题输入框
+  nextTick(() => {
+    try { trackTitleInput.value && trackTitleInput.value.focus() } catch (e) {}
+  })
+}
+
+// 关闭添加歌曲模态
+const closeAddTrackModal = () => {
+  if (addingTrack.value) return // 添加中时不允许关闭
+  // 清理预览URL（在重置之前）
+  if (newTrackForm.value.coverPreview && newTrackForm.value.coverPreview.startsWith('blob:')) {
+    try { URL.revokeObjectURL(newTrackForm.value.coverPreview) } catch (e) {}
+  }
+  addTrackModalOpen.value = false
+  newTrackForm.value = { 
+    title: '', 
+    artist: '', 
+    album: '', 
+    file: null,
+    coverFile: null,
+    coverPreview: null
+  }
+  addTrackError.value = { title: '', artist: '', general: '' }
+}
+
+// 打开文件选择对话框
+const openTrackFileDialog = () => {
+  if (trackFileInput.value) {
+    trackFileInput.value.value = ''
+    trackFileInput.value.click()
+  }
+}
+
+// 打开封面选择对话框
+const openTrackCoverDialog = () => {
+  if (trackCoverInput.value) {
+    trackCoverInput.value.value = ''
+    trackCoverInput.value.click()
+  }
+}
+
+// 处理音频文件选择
+const handleTrackFileSelect = (e) => {
+  const file = e.target.files?.[0]
+  if (!file) return
+  
+  // 验证文件类型
+  if (!file.type.startsWith('audio/') && !file.name.match(/\.(mp3|wav)$/i)) {
+    addTrackError.value.general = '请选择音频文件（MP3、WAV格式）'
+    return
+  }
+  
+  newTrackForm.value.file = file
+  
+  // 如果标题为空，尝试从文件名提取
+  if (!newTrackForm.value.title.trim()) {
+    newTrackForm.value.title = file.name.replace(/\.(mp3|wav)$/i, '')
+  }
+}
+
+// 处理封面文件选择
+const handleTrackCoverSelect = (e) => {
+  const file = e.target.files?.[0]
+  if (!file) return
+  
+  // 验证文件类型
+  if (!file.type.startsWith('image/')) {
+    addTrackError.value.general = '请选择图片文件'
+    return
+  }
+  
+  newTrackForm.value.coverFile = file
+  
+  // 创建预览
+  if (newTrackForm.value.coverPreview && newTrackForm.value.coverPreview.startsWith('blob:')) {
+    try { URL.revokeObjectURL(newTrackForm.value.coverPreview) } catch (e) {}
+  }
+  newTrackForm.value.coverPreview = URL.createObjectURL(file)
+}
+
+// 移除音频文件
+const removeTrackFile = () => {
+  newTrackForm.value.file = null
+}
+
+// 移除封面
+const removeTrackCover = () => {
+  if (newTrackForm.value.coverPreview && newTrackForm.value.coverPreview.startsWith('blob:')) {
+    try { URL.revokeObjectURL(newTrackForm.value.coverPreview) } catch (e) {}
+  }
+  newTrackForm.value.coverFile = null
+  newTrackForm.value.coverPreview = null
+}
+
+// 格式化文件大小
+const formatFileSize = (bytes) => {
+  if (!bytes || bytes === 0) return '0 B'
+  const k = 1024
+  const sizes = ['B', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i]
+}
+
+// 上传音频相关状态
+const uploadAudioModalOpen = ref(false)
+const uploadingAudio = ref(false)
+const uploadAudioForm = ref({ file: null })
+const uploadAudioError = ref('')
+const uploadAudioFileInput = ref(null)
+const uploadAudioSongIndex = ref(null)
+const uploadAudioSong = computed(() => {
+  if (uploadAudioSongIndex.value === null || uploadAudioSongIndex.value === undefined) return null
+  return songList.value[uploadAudioSongIndex.value] || null
+})
+
+// 打开上传音频模态
+const openUploadAudioModal = (songIndex) => {
+  if (!token.value) {
+    alert('请先登录')
+    openAuth('login')
+    return
+  }
+  
+  const song = songList.value[songIndex]
+  if (!song || !song.id) {
+    alert('歌曲信息不完整')
+    return
+  }
+  
+  uploadAudioSongIndex.value = songIndex
+  uploadAudioForm.value = { file: null }
+  uploadAudioError.value = ''
+  uploadAudioModalOpen.value = true
+}
+
+// 关闭上传音频模态
+const closeUploadAudioModal = () => {
+  if (uploadingAudio.value) return // 上传中时不允许关闭
+  uploadAudioModalOpen.value = false
+  uploadAudioForm.value = { file: null }
+  uploadAudioError.value = ''
+  uploadAudioSongIndex.value = null
+}
+
+// 上传封面相关状态
+const uploadCoverModalOpen = ref(false)
+const uploadingCover = ref(false)
+const uploadCoverForm = ref({ file: null, preview: null })
+const uploadCoverError = ref('')
+const uploadCoverFileInput = ref(null)
+const uploadCoverSongIndex = ref(null)
+const uploadCoverSong = computed(() => {
+  if (uploadCoverSongIndex.value === null || uploadCoverSongIndex.value === undefined) return null
+  return songList.value[uploadCoverSongIndex.value] || null
+})
+
+// 打开上传封面模态
+const openUploadCoverModal = (songIndex) => {
+  if (!token.value) {
+    alert('请先登录')
+    openAuth('login')
+    return
+  }
+  
+  const song = songList.value[songIndex]
+  if (!song || !song.id) {
+    alert('歌曲信息不完整')
+    return
+  }
+  
+  uploadCoverSongIndex.value = songIndex
+  uploadCoverForm.value = { file: null, preview: null }
+  uploadCoverError.value = ''
+  uploadCoverModalOpen.value = true
+}
+
+// 关闭上传封面模态
+const closeUploadCoverModal = () => {
+  if (uploadingCover.value) return // 上传中时不允许关闭
+  // 清理预览URL
+  if (uploadCoverForm.value.preview && uploadCoverForm.value.preview.startsWith('blob:')) {
+    try { URL.revokeObjectURL(uploadCoverForm.value.preview) } catch (e) {}
+  }
+  uploadCoverModalOpen.value = false
+  uploadCoverForm.value = { file: null, preview: null }
+  uploadCoverError.value = ''
+  uploadCoverSongIndex.value = null
+}
+
+// 打开封面文件选择对话框
+const openUploadCoverFileDialog = () => {
+  if (uploadCoverFileInput.value) {
+    uploadCoverFileInput.value.value = ''
+    uploadCoverFileInput.value.click()
+  }
+}
+
+// 处理封面文件选择
+const handleUploadCoverFileSelect = (e) => {
+  const file = e.target.files?.[0]
+  if (!file) return
+  
+  // 验证文件类型
+  if (!file.type.startsWith('image/')) {
+    uploadCoverError.value = '请选择图片文件'
+    return
+  }
+  
+  uploadCoverForm.value.file = file
+  
+  // 创建预览
+  if (uploadCoverForm.value.preview && uploadCoverForm.value.preview.startsWith('blob:')) {
+    try { URL.revokeObjectURL(uploadCoverForm.value.preview) } catch (e) {}
+  }
+  uploadCoverForm.value.preview = URL.createObjectURL(file)
+  uploadCoverError.value = ''
+}
+
+// 移除封面文件
+const removeUploadCoverFile = () => {
+  if (uploadCoverForm.value.preview && uploadCoverForm.value.preview.startsWith('blob:')) {
+    try { URL.revokeObjectURL(uploadCoverForm.value.preview) } catch (e) {}
+  }
+  uploadCoverForm.value.file = null
+  uploadCoverForm.value.preview = null
+}
+
+// 确认上传封面
+const confirmUploadCover = async () => {
+  if (!uploadCoverForm.value.file) {
+    uploadCoverError.value = '请选择封面图片'
+    return
+  }
+  
+  const song = uploadCoverSong.value
+  if (!song || !song.id) {
+    uploadCoverError.value = '歌曲信息不完整'
+    return
+  }
+
+  uploadingCover.value = true
+  uploadCoverError.value = ''
+  
+  try {
+    // 使用接口14：上传歌曲封面
+    const data = await api.uploadTrackCover(song.id, uploadCoverForm.value.file)
+    
+    if (data.code === 200) {
+      // 更新歌曲的封面URL
+      if (song) {
+        song.coverUrl = data.data // 接口返回封面链接
+      }
+      
+      // 重新加载歌单歌曲列表（如果在歌单视图中）
+      if (viewMode.value === 'playlist' && selectedPlaylistId.value) {
+        await loadPlaylistTracks(selectedPlaylistId.value)
+        // 重新加载后，确保封面URL已更新
+        const updatedSong = songList.value.find(s => s.id === song.id)
+        if (updatedSong && !updatedSong.coverUrl && data.data) {
+          updatedSong.coverUrl = data.data
+        }
+      }
+      
+      // 关闭模态
+      closeUploadCoverModal()
+    } else {
+      uploadCoverError.value = data.msg || '上传失败，请重试'
+    }
+  } catch (err) {
+    console.error('上传封面失败', err)
+    uploadCoverError.value = err.message || '网络错误，请重试'
+  } finally {
+    uploadingCover.value = false
+  }
+}
+
+// 打开文件选择对话框
+const openUploadAudioFileDialog = () => {
+  if (uploadAudioFileInput.value) {
+    uploadAudioFileInput.value.value = ''
+    uploadAudioFileInput.value.click()
+  }
+}
+
+// 处理音频文件选择
+const handleUploadAudioFileSelect = (e) => {
+  const file = e.target.files?.[0]
+  if (!file) return
+  
+  // 验证文件类型
+  if (!file.type.startsWith('audio/') && !file.name.match(/\.(mp3|wav)$/i)) {
+    uploadAudioError.value = '请选择音频文件（MP3、WAV格式）'
+    return
+  }
+  
+  uploadAudioForm.value.file = file
+  uploadAudioError.value = ''
+}
+
+// 移除音频文件
+const removeUploadAudioFile = () => {
+  uploadAudioForm.value.file = null
+}
+
+// 确认上传音频
+const confirmUploadAudio = async () => {
+  if (!uploadAudioForm.value.file) {
+    uploadAudioError.value = '请选择音频文件'
+    return
+  }
+  
+  const song = uploadAudioSong.value
+  if (!song || !song.id) {
+    uploadAudioError.value = '歌曲信息不完整'
+    return
+  }
+
+  uploadingAudio.value = true
+  uploadAudioError.value = ''
+  
+  try {
+    // 使用接口15：上传歌曲音频
+    const data = await api.uploadTrackAudio(song.id, uploadAudioForm.value.file)
+    
+    if (data.code === 200) {
+      // 更新歌曲的音频URL（立即更新，提供即时反馈）
+      if (song) {
+        song.url = data.data // 接口返回音频链接
+        // 如果当前正在播放这首歌曲，更新音频源
+        if (currentIndex.value === uploadAudioSongIndex.value) {
+          audio.value.src = data.data
+          // 如果正在播放，重新加载元数据
+          audio.value.load()
+        }
+      }
+      
+      // 重新加载歌单歌曲列表（如果在歌单视图中），确保数据同步
+      if (viewMode.value === 'playlist' && selectedPlaylistId.value) {
+        await loadPlaylistTracks(selectedPlaylistId.value)
+        // 重新加载后，确保URL已更新（因为loadPlaylistTracks会从后端获取最新数据）
+        const updatedSong = songList.value.find(s => s.id === song.id)
+        if (updatedSong && !updatedSong.url && data.data) {
+          updatedSong.url = data.data
+        }
+      }
+      
+      // 关闭模态
+      closeUploadAudioModal()
+    } else {
+      uploadAudioError.value = data.msg || '上传失败，请重试'
+    }
+  } catch (err) {
+    console.error('上传音频失败', err)
+    uploadAudioError.value = err.message || '网络错误，请重试'
+  } finally {
+    uploadingAudio.value = false
+  }
+}
+
+// 确认添加歌曲
+const confirmAddTrack = async () => {
+  // 重置错误
+  addTrackError.value = { title: '', artist: '', general: '' }
+  
+  // 验证表单
+  const title = newTrackForm.value.title.trim()
+  const artist = newTrackForm.value.artist.trim()
+  
+  if (!title) {
+    addTrackError.value.title = '歌曲名称不能为空'
+    return
+  }
+  if (title.length > 100) {
+    addTrackError.value.title = '歌曲名称不能超过100个字符'
+    return
+  }
+  
+  if (!artist) {
+    addTrackError.value.artist = '歌手名称不能为空'
+    return
+  }
+  if (artist.length > 50) {
+    addTrackError.value.artist = '歌手名称不能超过50个字符'
+    return
+  }
+  
+  // 如果没有选择文件，至少需要标题和歌手
+  if (!newTrackForm.value.file && !title && !artist) {
+    addTrackError.value.general = '请至少填写歌曲名称和歌手，或上传音频文件'
+    return
+  }
+
+  addingTrack.value = true
+  
+  try {
+    // 准备上传数据
+    const uploadData = {
+      playlistId: selectedPlaylistId.value,
+      title: title,
+      artist: artist
+    }
+    
+    // 可选字段
+    if (newTrackForm.value.album.trim()) {
+      uploadData.album = newTrackForm.value.album.trim()
+    }
+    
+    if (newTrackForm.value.file) {
+      uploadData.file = newTrackForm.value.file
+    }
+    
+    // 注意：接口文档中coverUrl是URL字符串，不是文件
+    // 如果需要上传封面文件，可能需要先上传获取URL，或者后端支持直接上传文件
+    // 这里暂时只支持URL，如果需要上传文件，需要额外的接口
+    
+    // 使用接口11：向歌单添加歌曲
+    const data = await api.addTrackToPlaylist(uploadData)
+    
+    if (data.code === 200) {
+      // 重新加载歌单歌曲列表
+      await loadPlaylistTracks(selectedPlaylistId.value)
+      
+      // 如果用户上传了封面文件，尝试上传封面
+      if (newTrackForm.value.coverFile) {
+        // 从刚加载的歌曲列表中找到刚添加的歌曲（通过标题和歌手匹配）
+        const playlist = playlists.value.find(p => p.id === selectedPlaylistId.value)
+        if (playlist && playlist.songs && playlist.songs.length > 0) {
+          // 获取最后添加的歌曲（假设是按顺序添加的）
+          const lastSongIndex = playlist.songs[playlist.songs.length - 1]
+          const lastSong = songList.value[lastSongIndex]
+          
+          // 如果标题和歌手匹配，说明是刚添加的歌曲
+          if (lastSong && lastSong.name === title && lastSong.artist === artist && lastSong.id) {
+            try {
+              // 使用接口14：上传歌曲封面
+              const coverData = await api.uploadTrackCover(lastSong.id, newTrackForm.value.coverFile)
+              if (coverData.code === 200) {
+                // 更新歌曲的封面URL
+                lastSong.coverUrl = coverData.data
+                // 重新加载歌单以更新封面
+                await loadPlaylistTracks(selectedPlaylistId.value)
+              }
+            } catch (coverErr) {
+              console.error('上传封面失败', coverErr)
+              // 封面上传失败不影响主流程，只记录错误
+            }
+          }
+        }
+      }
+      
+      // 关闭模态
+      closeAddTrackModal()
+    } else {
+      addTrackError.value.general = data.msg || '添加失败，请重试'
+    }
+  } catch (err) {
+    console.error('添加歌曲失败', err)
+    addTrackError.value.general = err.message || '网络错误，请重试'
+  } finally {
+    addingTrack.value = false
   }
 }
 
@@ -1123,6 +2053,104 @@ const saveManageSongs = async () => {
 
 const closeManageSongs = () => { manageModalOpen.value = false }
 
+// 打开修改歌单名称模态
+const openEditPlaylistNameModal = (playlistId) => {
+  if (!token.value) {
+    alert('请先登录')
+    openAuth('login')
+    return
+  }
+  
+  const playlist = playlists.value.find(p => p.id === playlistId)
+  if (!playlist) {
+    alert('歌单不存在')
+    return
+  }
+  
+  editingPlaylistId.value = playlistId
+  editPlaylistNameForm.value = { name: playlist.name }
+  editPlaylistNameError.value = { name: '', general: '' }
+  editPlaylistNameModalOpen.value = true
+  
+  // 自动聚焦到输入框
+  nextTick(() => {
+    try { editPlaylistNameInput.value && editPlaylistNameInput.value.focus() } catch (e) {}
+  })
+}
+
+// 关闭修改歌单名称模态
+const closeEditPlaylistNameModal = () => {
+  if (editingPlaylistName.value) return // 保存中时不允许关闭
+  editPlaylistNameModalOpen.value = false
+  editPlaylistNameForm.value = { name: '' }
+  editPlaylistNameError.value = { name: '', general: '' }
+  editingPlaylistId.value = null
+}
+
+// 确认修改歌单名称
+const confirmEditPlaylistName = async () => {
+  // 重置错误
+  editPlaylistNameError.value = { name: '', general: '' }
+  
+  // 验证表单
+  const name = editPlaylistNameForm.value.name.trim()
+  if (!name) {
+    editPlaylistNameError.value.name = '歌单名称不能为空'
+    return
+  }
+  if (name.length > 50) {
+    editPlaylistNameError.value.name = '歌单名称不能超过50个字符'
+    return
+  }
+  
+  // 检查名称是否重复（排除当前歌单）
+  const playlist = playlists.value.find(p => p.id === editingPlaylistId.value)
+  if (!playlist) {
+    editPlaylistNameError.value.general = '歌单不存在'
+    return
+  }
+  
+  if (playlists.value.some(p => p.name === name && p.id !== editingPlaylistId.value)) {
+    editPlaylistNameError.value.name = '歌单名称已存在，请使用其他名称'
+    return
+  }
+
+  editingPlaylistName.value = true
+  
+  try {
+    // 使用接口8：修改歌单信息
+    const data = await api.updatePlaylist({ 
+      id: editingPlaylistId.value,
+      name: name, 
+      sort: playlist.sort, 
+      status: playlist.status 
+    })
+    
+    if (data.code === 200) {
+      // 更新本地歌单名称
+      if (playlist) {
+        playlist.name = name
+      }
+      // 如果当前选中的是这个歌单，更新显示
+      if (selectedPlaylistId.value === editingPlaylistId.value) {
+        editName.value = name
+      }
+      // 重新获取歌单列表以确保数据同步
+      await fetchPlaylists()
+      // 关闭模态
+      editPlaylistNameModalOpen.value = false
+      editPlaylistNameForm.value = { name: '' }
+    } else {
+      editPlaylistNameError.value.general = data.msg || '保存失败，请重试'
+    }
+  } catch (err) {
+    console.error('修改歌单名称失败', err)
+    editPlaylistNameError.value.general = err.message || '网络错误，请重试'
+  } finally {
+    editingPlaylistName.value = false
+  }
+}
+
 const displayed = computed(() => {
   if (viewMode.value === 'search') return searchResults.value
   const arr = songList.value.map((s, i) => ({ s, i }))
@@ -1138,14 +2166,31 @@ const displayed = computed(() => {
 // 播放控制相关
 const playSong = (i) => {
   if (!songList.value.length || i < 0 || i >= songList.value.length) return
+  const song = songList.value[i]
+  if (!song || !song.url || song.url === '') {
+    console.warn('歌曲没有音频URL，无法播放')
+    return
+  }
   currentIndex.value = i
-  audio.value.src = songList.value[i].url
+  audio.value.src = song.url
   currentTime.value = 0
   audioDuration.value = 0
   audio.value.play().then(() => isPlaying.value = true).catch((err) => {
     isPlaying.value = false
     console.error('播放失败:', err)
+    alert('播放失败: ' + (err.message || '未知错误'))
   })
+}
+
+// 处理播放按钮点击
+const handlePlayButtonClick = (i) => {
+  // 如果点击的是当前正在播放的歌曲，则暂停/继续
+  if (currentIndex.value === i) {
+    togglePlay()
+  } else {
+    // 否则切换播放新歌曲
+    playSong(i)
+  }
 }
 
 const togglePlay = () => {

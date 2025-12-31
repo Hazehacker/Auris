@@ -815,6 +815,42 @@ button:focus-visible {
 }
 .playlist-item {
 	padding-left: 2.5rem !important;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	position: relative;
+}
+
+.playlist-name {
+	flex: 1;
+	min-width: 0;
+	cursor: pointer;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.playlist-edit-btn {
+	background: transparent;
+	border: none;
+	cursor: pointer;
+	font-size: 14px;
+	padding: 4px 6px;
+	border-radius: 4px;
+	opacity: 0;
+	transition: all 0.2s;
+	flex-shrink: 0;
+	margin-right: 8px;
+}
+
+.playlist-item:hover .playlist-edit-btn {
+	opacity: 1;
+}
+
+.playlist-edit-btn:hover {
+	background-color: #f3f4f6;
+	transform: scale(1.1);
 }
 .sidebar-empty {
 	padding: 1rem 1.5rem;
@@ -1036,10 +1072,14 @@ tr.active {
 .title-col {
 	font-weight: 500;
 	color: #111827;
+	max-width: 200px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 .time-col, .artist-col {
 	color: #6b7280;
-	width: 120px;
+	width: 100px;
 }
 .fav-col {
 	width: 80px;
@@ -1055,18 +1095,98 @@ tr.active {
 	color: #ef4444;
 }
 .action-col {
-	width: 80px;
+	width: 120px;
 	text-align: center;
 }
+
+.title-with-play {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.play-icon-btn {
+	background: transparent;
+	border: none;
+	cursor: pointer;
+	font-size: 14px;
+	color: #2fb67d;
+	padding: 4px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 24px;
+	height: 24px;
+	border-radius: 4px;
+	transition: all 0.2s;
+	flex-shrink: 0;
+}
+
+.play-icon-btn:hover:not(:disabled) {
+	background-color: #f0fdf4;
+	transform: scale(1.1);
+}
+
+.play-icon-btn:disabled {
+	color: #d1d5db;
+	cursor: not-allowed;
+	opacity: 0.5;
+}
+
+.song-title-text {
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.action-buttons {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	flex-wrap: nowrap;
+}
+
 .icon-btn {
 	background: transparent;
 	border: none;
 	font-size: 1rem;
 	cursor: pointer;
 	color: #6b7280;
+	transition: all 0.2s;
 }
+
 .icon-btn:hover {
+	color: #111827;
+}
+
+.action-btn {
+	margin: 0;
+	padding: 4px 8px;
+	border-radius: 6px;
+	transition: all 0.2s;
+	min-width: 32px;
+	height: 32px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 14px;
+}
+
+.action-btn:hover {
+	background-color: #f3f4f6;
+	transform: scale(1.05);
+}
+
+.action-btn.danger {
 	color: #ef4444;
+}
+
+.action-btn.danger:hover {
+	background-color: #fee2e2;
+	color: #dc2626;
 }
 .empty {
 	text-align: center;
@@ -1219,6 +1339,304 @@ tr.active {
 	font-size: 0.85rem;
 	text-align: center;
 }
+
+/* 创建歌单模态样式 */
+.create-playlist-modal {
+	width: 480px;
+	max-width: 90vw;
+}
+
+.create-playlist-form {
+	display: flex;
+	flex-direction: column;
+	gap: 1.2rem;
+	margin-top: 1rem;
+}
+
+.form-row {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+}
+
+.form-label {
+	font-size: 0.9rem;
+	color: #374151;
+	font-weight: 500;
+}
+
+.form-label .required {
+	color: #ef4444;
+	margin-left: 2px;
+}
+
+.form-row input,
+.form-row textarea {
+	padding: 0.6rem 0.8rem;
+	border-radius: 6px;
+	border: 1px solid #e5e7eb;
+	outline: none;
+	font-size: 0.9rem;
+	font-family: inherit;
+	transition: border-color 0.2s;
+}
+
+.form-row input:focus,
+.form-row textarea:focus {
+	border-color: #2fb67d;
+	box-shadow: 0 0 0 3px rgba(47, 182, 125, 0.1);
+}
+
+.form-row textarea {
+	resize: vertical;
+	min-height: 80px;
+}
+
+.form-error {
+	color: #ef4444;
+	font-size: 0.85rem;
+	margin-top: -0.3rem;
+}
+
+.create-playlist-modal .modal-actions {
+	margin-top: 0.5rem;
+}
+
+/* 添加歌曲模态样式 */
+.add-track-modal {
+	width: 600px;
+	max-width: 90vw;
+	max-height: 85vh;
+	overflow-y: auto;
+}
+
+.add-track-form {
+	display: flex;
+	flex-direction: column;
+	gap: 1.5rem;
+	margin-top: 1rem;
+}
+
+.form-section {
+	display: flex;
+	flex-direction: column;
+	gap: 1rem;
+	padding: 1rem;
+	background: #f9fafb;
+	border-radius: 8px;
+	border: 1px solid #e5e7eb;
+}
+
+.form-section-title {
+	margin: 0;
+	font-size: 1rem;
+	font-weight: 600;
+	color: #374151;
+	border-bottom: 2px solid #2fb67d;
+	padding-bottom: 0.5rem;
+}
+
+.file-upload-area {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+}
+
+.file-upload-placeholder {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	padding: 2rem;
+	border: 2px dashed #d1d5db;
+	border-radius: 8px;
+	background: #fff;
+	cursor: pointer;
+	transition: all 0.2s;
+	gap: 0.5rem;
+}
+
+.file-upload-placeholder:hover {
+	border-color: #2fb67d;
+	background: #f0fdf4;
+}
+
+.upload-icon {
+	font-size: 2rem;
+}
+
+.upload-hint {
+	font-size: 0.85rem;
+	color: #6b7280;
+}
+
+.file-upload-selected {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 1rem;
+	background: #fff;
+	border: 1px solid #e5e7eb;
+	border-radius: 8px;
+	gap: 1rem;
+}
+
+.file-info {
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
+	flex: 1;
+	min-width: 0;
+}
+
+.file-icon {
+	font-size: 1.5rem;
+	flex-shrink: 0;
+}
+
+.file-details {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 0.25rem;
+}
+
+.file-name {
+	font-size: 0.9rem;
+	font-weight: 500;
+	color: #111827;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.file-size {
+	font-size: 0.85rem;
+	color: #6b7280;
+}
+
+.cover-preview {
+	width: 60px;
+	height: 60px;
+	object-fit: cover;
+	border-radius: 6px;
+	flex-shrink: 0;
+}
+
+.cover-preview-large {
+	width: 120px;
+	height: 120px;
+	object-fit: cover;
+	border-radius: 8px;
+	flex-shrink: 0;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* 修改歌单名称模态样式 */
+.edit-playlist-name-modal {
+	width: 480px;
+	max-width: 90vw;
+}
+
+.edit-playlist-name-form {
+	display: flex;
+	flex-direction: column;
+	gap: 1.2rem;
+	margin-top: 1rem;
+}
+
+/* 侧边栏歌单项样式 */
+.playlist-item {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	position: relative;
+}
+
+.playlist-name {
+	flex: 1;
+	min-width: 0;
+	cursor: pointer;
+}
+
+.playlist-edit-btn {
+	background: transparent;
+	border: none;
+	cursor: pointer;
+	font-size: 14px;
+	padding: 4px 6px;
+	border-radius: 4px;
+	opacity: 0;
+	transition: all 0.2s;
+	flex-shrink: 0;
+}
+
+.playlist-item:hover .playlist-edit-btn {
+	opacity: 1;
+}
+
+.playlist-edit-btn:hover {
+	background-color: #f3f4f6;
+	transform: scale(1.1);
+}
+
+/* 上传封面模态样式 */
+.upload-cover-modal {
+	width: 500px;
+	max-width: 90vw;
+}
+
+.upload-cover-form {
+	display: flex;
+	flex-direction: column;
+	gap: 1.5rem;
+	margin-top: 1rem;
+}
+
+/* 上传音频模态样式 */
+.upload-audio-modal {
+	width: 500px;
+	max-width: 90vw;
+}
+
+.upload-audio-form {
+	display: flex;
+	flex-direction: column;
+	gap: 1.5rem;
+	margin-top: 1rem;
+}
+
+.song-info-display {
+	display: flex;
+	flex-direction: column;
+	gap: 0.75rem;
+	padding: 1rem;
+	background: #fff;
+	border-radius: 6px;
+	border: 1px solid #e5e7eb;
+}
+
+.info-item {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+.info-label {
+	font-size: 0.9rem;
+	color: #6b7280;
+	font-weight: 500;
+	min-width: 80px;
+}
+
+.info-value {
+	font-size: 0.95rem;
+	color: #111827;
+	font-weight: 500;
+}
+
 .sr-only {
 	position: absolute;
 	width: 1px;
