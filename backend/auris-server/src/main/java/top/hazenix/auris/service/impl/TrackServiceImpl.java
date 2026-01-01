@@ -1,5 +1,6 @@
 package top.hazenix.auris.service.impl;
 
+import com.aliyuncs.exceptions.ClientException;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import lombok.RequiredArgsConstructor;
@@ -8,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import top.hazenix.auris.constant.MessageConstant;
+import top.hazenix.auris.context.BaseContext;
 import top.hazenix.auris.entity.PlaylistTracks;
 import top.hazenix.auris.entity.Track;
 import top.hazenix.auris.mapper.PlaylistTracksMapper;
@@ -20,6 +22,7 @@ import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -177,5 +180,14 @@ public class TrackServiceImpl implements ITrackService {
         }
 
 
+
     }
+
+    @Override
+    public Map<String, String> getTempCredentials() throws ClientException {
+        Long userId = BaseContext.getCurrentId();
+        return aliOssUtil.getTempCredentials(userId);
+    }
+
+
 }

@@ -1,10 +1,12 @@
 package top.hazenix.auris.service;
 
+import com.aliyuncs.exceptions.ClientException;
 import org.springframework.web.multipart.MultipartFile;
 import top.hazenix.auris.entity.Track;
 import top.hazenix.auris.query.TrackQuery;
 
 import java.util.List;
+import java.util.Map;
 
 public interface ITrackService {
     List<Track> getTrackByPlaylistId(Long id);
@@ -18,4 +20,6 @@ public interface ITrackService {
     void removeTrack(Long id, Long trackId);
 
     void updateTrackSort(Long id, List<Long> ids);
+
+    Map<String, String> getTempCredentials() throws ClientException;
 }

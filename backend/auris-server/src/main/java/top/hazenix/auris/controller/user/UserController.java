@@ -55,6 +55,7 @@ public class UserController {
     @ApiOperation("注册接口")
     public Result<UserLoginVO> register(@RequestBody UserLoginQuery userLoginQuery){
         log.info("用户注册:{}",userLoginQuery);
+//        return Result.error("内部使用，暂时不允许注册"); //生产环境打开
         UserLoginVO userLoginVO = userService.register(userLoginQuery);
         return Result.success(userLoginVO);
     }

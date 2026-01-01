@@ -1,5 +1,6 @@
 package top.hazenix.auris.controller.user;
 
+import com.aliyuncs.exceptions.ClientException;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +17,7 @@ import top.hazenix.auris.utils.AliOssUtil;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 /**
  * @description: 音乐管理相关接口
@@ -137,5 +139,11 @@ public class TrackController {
         return Result.success(url);
     }
 
+    @GetMapping("/upload/credentials")
+    public Result getTempCredentials() throws ClientException {
+        log.info("获取STS临时凭证");
+        Map<String,String> map = trackService.getTempCredentials();
+        return Result.success(map);
+    }
 
 }

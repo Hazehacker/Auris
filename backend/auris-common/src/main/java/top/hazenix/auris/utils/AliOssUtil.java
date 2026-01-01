@@ -4,6 +4,11 @@ import com.aliyun.oss.ClientException;
 import com.aliyun.oss.OSS;
 import com.aliyun.oss.OSSClientBuilder;
 import com.aliyun.oss.OSSException;
+import com.aliyuncs.DefaultAcsClient;
+import com.aliyuncs.auth.sts.AssumeRoleRequest;
+import com.aliyuncs.auth.sts.AssumeRoleResponse;
+import com.aliyuncs.http.MethodType;
+import com.aliyuncs.profile.DefaultProfile;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -15,6 +20,8 @@ import top.hazenix.auris.properties.AliOssProperties;
 import java.io.ByteArrayInputStream;
 import java.net.URL;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 @Data
@@ -129,5 +136,59 @@ public class AliOssUtil {
                 ossClient.shutdown();
             }
         }
+    }
+
+    /**
+     * 后端签发临时访问凭证给前端，用于前端直传OSS
+     * @param userId
+     * @return
+     * @throws ClientException
+     */
+    public Map<String, String> getTempCredentials(Long userId) throws com.aliyuncs.exceptions.ClientException {
+        String accessKeyId = aliOssProperties.getAccessKeyId();
+        String accessKeySecret = aliOssProperties.getAccessKeySecret();
+        String roleArn = aliOssProperties.getRoleArn();
+        String region = aliOssProperties.getRegion();
+        String roleSessionName = aliOssProperties.getRoleSessionName();
+        // 1. 初始化客户端
+        DefaultProfile profile = DefaultProfile.getProfile(region, accessKeyId, accessKeySecret);
+        DefaultAcsClient client = new DefaultAcsClient(profile);
+
+        // 2. 构造请求
+        AssumeRoleRequest request = new AssumeRoleRequest();
+        request.setMethod(MethodType.POST);
+        request.setRoleArn(roleArn);
+        request.setRoleSessionName(roleSessionName + "-" + userId);
+        request.setDurationSeconds(900L); // 临时凭证有效期：15分钟 (此api最小允许15min，最大允许1h)
+
+        // 3. 限制上传路径（只能上传到自己的目录）
+        String policy = String.format("""
+            {
+              "Version": "1",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": ["oss:PutObject", "oss:PostObject"],
+                  "Resource": "acs:oss:*:*:%s/music/%d/*"
+                }
+              ]
+            }
+            """,
+                aliOssProperties.getBucketName(),
+                userId
+        );
+        request.setPolicy(policy);
+
+        // 4. 获取临时凭证
+        AssumeRoleResponse response = client.getAcsResponse(request);
+
+        Map<String, String> result = new HashMap<>();
+        result.put("accessKeyId", response.getCredentials().getAccessKeyId());
+        result.put("accessKeySecret", response.getCredentials().getAccessKeySecret());
+        result.put("securityToken", response.getCredentials().getSecurityToken());
+        result.put("bucket", aliOssProperties.getBucketName());
+        result.put("region", region);
+        result.put("dir", "music/" + userId + "/");
+        return result;
     }
 }

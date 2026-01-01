@@ -28,6 +28,11 @@
             <artifactId>aliyun-sdk-oss</artifactId>
             <version>3.17.4</version>
         </dependency>
+        <dependency>
+            <groupId>com.aliyun</groupId>
+            <artifactId>aliyun-java-sdk-sts</artifactId>
+            <version>3.1.0</version>
+        </dependency>
 
         <!--fastjson-->
         <dependency>
@@ -44,5 +49,17 @@
         </dependency>
 
     </dependencies>
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <source>15</source>
+                    <target>15</target>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 
 </project>

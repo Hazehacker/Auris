@@ -7,6 +7,14 @@ spring:
   application:
     main:
       allow-circular-references: true
+  servlet:
+    multipart: # 【调整 Spring Boot 的文件上传限制】
+      # 单个文件最大大小（100MB，音频文件通常较大）
+      max-file-size: 100MB
+      # 整个请求最大大小（100MB，包含所有文件和表单数据）
+      max-request-size: 100MB
+      # 文件写入磁盘的阈值，超过此大小会先写入临时文件
+      file-size-threshold: 10MB
   datasource:
     url: jdbc:postgresql://${auris.datasource.host:localhost}:${auris.datasource.port:5432}/${auris.datasource.database:auris}?sslmode=disable
     driver-class-name: ${auris.datasource.driver-class-name:org.postgresql.Driver}
