@@ -199,6 +199,27 @@ export const api = {
     })
   },
 
+  // 接口18：获取STS临时凭证
+  getTempCredentials() {
+    return this.request('/user/track/upload/credentials', {
+      method: 'GET'
+    })
+  },
+
+  // 接口19：获取上传封面的临时凭证（v2版本）
+  getCoverUploadCredentials(trackId) {
+    return this.request(`/user/track/${trackId}/cover/v2`, {
+      method: 'GET'
+    })
+  },
+
+  // 接口20：获取上传音频的临时凭证（v2版本）
+  getAudioUploadCredentials(trackId) {
+    return this.request(`/user/track/${trackId}/audio/v2`, {
+      method: 'GET'
+    })
+  },
+
   // ========== 歌词相关接口 ==========
 
   // 接口16：根据歌曲id获取歌词

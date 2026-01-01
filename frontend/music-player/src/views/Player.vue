@@ -501,10 +501,19 @@ import { api } from '../api.js'
           </div>
           
           <div class="form-error" v-if="uploadCoverError">{{ uploadCoverError }}</div>
+          
+          <!-- 上传进度条 -->
+          <div v-if="uploadingCover" class="upload-progress">
+            <div class="progress-bar">
+              <div class="progress-fill" :style="{ width: uploadCoverProgress + '%' }"></div>
+            </div>
+            <div class="progress-text">{{ uploadCoverProgress }}%</div>
+          </div>
+          
           <div class="modal-actions">
             <button class="btn green-outline" @click="closeUploadCoverModal" :disabled="uploadingCover">取消</button>
             <button class="btn green" @click="confirmUploadCover" :disabled="uploadingCover || !uploadCoverForm.file">
-              <span v-if="uploadingCover">上传中...</span>
+              <span v-if="uploadingCover">上传中 {{ uploadCoverProgress }}%</span>
               <span v-else>上传封面</span>
             </button>
           </div>
@@ -561,10 +570,19 @@ import { api } from '../api.js'
           </div>
           
           <div class="form-error" v-if="uploadAudioError">{{ uploadAudioError }}</div>
+          
+          <!-- 上传进度条 -->
+          <div v-if="uploadingAudio" class="upload-progress">
+            <div class="progress-bar">
+              <div class="progress-fill" :style="{ width: uploadAudioProgress + '%' }"></div>
+            </div>
+            <div class="progress-text">{{ uploadAudioProgress }}%</div>
+          </div>
+          
           <div class="modal-actions">
             <button class="btn green-outline" @click="closeUploadAudioModal" :disabled="uploadingAudio">取消</button>
             <button class="btn green" @click="confirmUploadAudio" :disabled="uploadingAudio || !uploadAudioForm.file">
-              <span v-if="uploadingAudio">上传中...</span>
+              <span v-if="uploadingAudio">上传中 {{ uploadAudioProgress }}%</span>
               <span v-else>上传音频</span>
             </button>
           </div>
@@ -740,6 +758,7 @@ import { api } from '../api.js'
 import { ref, watch, onMounted, computed, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { api } from '../api.js'
+import { uploadCoverToOSS, uploadAudioToOSS } from '../utils/ossUpload.js'
 
 // 主题切换
 const isDarkMode = ref(localStorage.getItem('theme') !== 'light')
@@ -1437,6 +1456,7 @@ const uploadAudioForm = ref({ file: null })
 const uploadAudioError = ref('')
 const uploadAudioFileInput = ref(null)
 const uploadAudioSongIndex = ref(null)
+const uploadAudioProgress = ref(0) // 上传进度
 const uploadAudioSong = computed(() => {
   if (uploadAudioSongIndex.value === null || uploadAudioSongIndex.value === undefined) return null
   return songList.value[uploadAudioSongIndex.value] || null
@@ -1478,6 +1498,7 @@ const uploadCoverForm = ref({ file: null, preview: null })
 const uploadCoverError = ref('')
 const uploadCoverFileInput = ref(null)
 const uploadCoverSongIndex = ref(null)
+const uploadCoverProgress = ref(0) // 上传进度
 const uploadCoverSong = computed(() => {
   if (uploadCoverSongIndex.value === null || uploadCoverSongIndex.value === undefined) return null
   return songList.value[uploadCoverSongIndex.value] || null
@@ -1569,37 +1590,50 @@ const confirmUploadCover = async () => {
 
   uploadingCover.value = true
   uploadCoverError.value = ''
+  uploadCoverProgress.value = 0
   
   try {
-    // 使用接口14：上传歌曲封面
-    const data = await api.uploadTrackCover(song.id, uploadCoverForm.value.file)
-    
-    if (data.code === 200) {
-      // 更新歌曲的封面URL
-      if (song) {
-        song.coverUrl = data.data // 接口返回封面链接
-      }
-      
-      // 重新加载歌单歌曲列表（如果在歌单视图中）
-      if (viewMode.value === 'playlist' && selectedPlaylistId.value) {
-        await loadPlaylistTracks(selectedPlaylistId.value)
-        // 重新加载后，确保封面URL已更新
-        const updatedSong = songList.value.find(s => s.id === song.id)
-        if (updatedSong && !updatedSong.coverUrl && data.data) {
-          updatedSong.coverUrl = data.data
+    // 使用OSS直传方式上传封面
+    const coverUrl = await uploadCoverToOSS(
+      song.id,
+      uploadCoverForm.value.file,
+      async (trackId) => {
+        // 获取临时凭证
+        const response = await api.getCoverUploadCredentials(trackId)
+        if (response.code !== 200) {
+          throw new Error(response.msg || '获取上传凭证失败')
         }
+        return response.data
+      },
+      (progress) => {
+        // 更新上传进度
+        uploadCoverProgress.value = progress
       }
-      
-      // 关闭模态
-      closeUploadCoverModal()
-    } else {
-      uploadCoverError.value = data.msg || '上传失败，请重试'
+    )
+    
+    // 上传成功，更新歌曲的封面URL
+    if (song) {
+      song.coverUrl = coverUrl
     }
+    
+    // 重新加载歌单歌曲列表（如果在歌单视图中）
+    if (viewMode.value === 'playlist' && selectedPlaylistId.value) {
+      await loadPlaylistTracks(selectedPlaylistId.value)
+      // 重新加载后，确保封面URL已更新
+      const updatedSong = songList.value.find(s => s.id === song.id)
+      if (updatedSong && !updatedSong.coverUrl && coverUrl) {
+        updatedSong.coverUrl = coverUrl
+      }
+    }
+    
+    // 关闭模态
+    closeUploadCoverModal()
   } catch (err) {
     console.error('上传封面失败', err)
     uploadCoverError.value = err.message || '网络错误，请重试'
   } finally {
     uploadingCover.value = false
+    uploadCoverProgress.value = 0
   }
 }
 
@@ -1646,43 +1680,56 @@ const confirmUploadAudio = async () => {
 
   uploadingAudio.value = true
   uploadAudioError.value = ''
+  uploadAudioProgress.value = 0
   
   try {
-    // 使用接口15：上传歌曲音频
-    const data = await api.uploadTrackAudio(song.id, uploadAudioForm.value.file)
+    // 使用OSS直传方式上传音频
+    const audioUrl = await uploadAudioToOSS(
+      song.id,
+      uploadAudioForm.value.file,
+      async (trackId) => {
+        // 获取临时凭证
+        const response = await api.getAudioUploadCredentials(trackId)
+        if (response.code !== 200) {
+          throw new Error(response.msg || '获取上传凭证失败')
+        }
+        return response.data
+      },
+      (progress) => {
+        // 更新上传进度
+        uploadAudioProgress.value = progress
+      }
+    )
     
-    if (data.code === 200) {
-      // 更新歌曲的音频URL（立即更新，提供即时反馈）
-      if (song) {
-        song.url = data.data // 接口返回音频链接
-        // 如果当前正在播放这首歌曲，更新音频源
-        if (currentIndex.value === uploadAudioSongIndex.value) {
-          audio.value.src = data.data
-          // 如果正在播放，重新加载元数据
-          audio.value.load()
-        }
+    // 上传成功，更新歌曲的音频URL
+    if (song) {
+      song.url = audioUrl
+      // 如果当前正在播放这首歌曲，更新音频源
+      if (currentIndex.value === uploadAudioSongIndex.value) {
+        audio.value.src = audioUrl
+        // 如果正在播放，重新加载元数据
+        audio.value.load()
       }
-      
-      // 重新加载歌单歌曲列表（如果在歌单视图中），确保数据同步
-      if (viewMode.value === 'playlist' && selectedPlaylistId.value) {
-        await loadPlaylistTracks(selectedPlaylistId.value)
-        // 重新加载后，确保URL已更新（因为loadPlaylistTracks会从后端获取最新数据）
-        const updatedSong = songList.value.find(s => s.id === song.id)
-        if (updatedSong && !updatedSong.url && data.data) {
-          updatedSong.url = data.data
-        }
-      }
-      
-      // 关闭模态
-      closeUploadAudioModal()
-    } else {
-      uploadAudioError.value = data.msg || '上传失败，请重试'
     }
+    
+    // 重新加载歌单歌曲列表（如果在歌单视图中），确保数据同步
+    if (viewMode.value === 'playlist' && selectedPlaylistId.value) {
+      await loadPlaylistTracks(selectedPlaylistId.value)
+      // 重新加载后，确保URL已更新
+      const updatedSong = songList.value.find(s => s.id === song.id)
+      if (updatedSong && !updatedSong.url && audioUrl) {
+        updatedSong.url = audioUrl
+      }
+    }
+    
+    // 关闭模态
+    closeUploadAudioModal()
   } catch (err) {
     console.error('上传音频失败', err)
     uploadAudioError.value = err.message || '网络错误，请重试'
   } finally {
     uploadingAudio.value = false
+    uploadAudioProgress.value = 0
   }
 }
 
@@ -2337,3 +2384,43 @@ const handleAvatarUpload = async (e) => {
 
 
 </script>
+
+
+<style scoped>
+/* 上传进度条样式 */
+.upload-progress {
+  margin: 15px 0;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background-color: #e0e0e0;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4CAF50, #45a049);
+  transition: width 0.3s ease;
+  border-radius: 4px;
+}
+
+.progress-text {
+  text-align: center;
+  font-size: 14px;
+  color: #666;
+  font-weight: 500;
+}
+
+/* 暗色模式下的进度条 */
+.dark-mode .progress-bar {
+  background-color: #333;
+}
+
+.dark-mode .progress-text {
+  color: #aaa;
+}
+</style>
