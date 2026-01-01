@@ -22,4 +22,6 @@ public interface ITrackService {
     void updateTrackSort(Long id, List<Long> ids);
 
     Map<String, String> getTempCredentials() throws ClientException;
+
+    void validateTrackExists(Long id);
 }

@@ -189,5 +189,15 @@ public class TrackServiceImpl implements ITrackService {
         return aliOssUtil.getTempCredentials(userId);
     }
 
+    @Override
+    public void validateTrackExists(Long id) {
+        if (id == null || id <= 0) {
+            throw new RuntimeException("歌曲ID不能为空或无效");
+        }
+        Track track = trackMapper.selectById(id);
+        if (track == null) {
+            throw new RuntimeException(MessageConstant.TRACK_NOT_EXIST);
+        }
+    }
 
 }

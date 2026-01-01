@@ -140,8 +140,41 @@ public class TrackController {
     }
 
     @GetMapping("/upload/credentials")
+    @ApiOperation("获取STS临时凭证")
     public Result getTempCredentials() throws ClientException {
         log.info("获取STS临时凭证");
+        Map<String,String> map = trackService.getTempCredentials();
+        return Result.success(map);
+    }
+
+    /**
+     * @description: 获取上传封面的临时凭证
+     * @param: id
+     * @version: 1.0.0
+     * @return
+     */
+    @GetMapping("/{id}/cover/v2")
+    @ApiOperation("获取上传封面的临时凭证")
+    public Result getCoverUploadCredentials(@PathVariable Long id) throws ClientException {
+        log.info("获取上传封面的临时凭证，歌曲ID：{}", id);
+        // 参数校验：验证歌曲是否存在
+        trackService.validateTrackExists(id);
+        Map<String,String> map = trackService.getTempCredentials();
+        return Result.success(map);
+    }
+
+    /**
+     * @description: 获取上传音频的临时凭证
+     * @param: id
+     * @version: 1.0.0
+     * @return
+     */
+    @GetMapping("/{id}/audio/v2")
+    @ApiOperation("获取上传音频的临时凭证")
+    public Result getAudioUploadCredentials(@PathVariable Long id) throws ClientException {
+        log.info("获取上传音频的临时凭证，歌曲ID：{}", id);
+        // 参数校验：验证歌曲是否存在
+        trackService.validateTrackExists(id);
         Map<String,String> map = trackService.getTempCredentials();
         return Result.success(map);
     }
