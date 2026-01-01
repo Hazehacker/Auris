@@ -1,898 +1,739 @@
 import { api } from '../api.js'
 <template>
-    <div class="player-container">
-        <!-- 顶部 header（包含 logo、搜索、用户区域） -->
-        <header class="app-header">
-            <div class="header-left">
-                <div class="logo" role="button" tabindex="0" @click="openFileDialog" @keydown.enter="openFileDialog">🎧 <span class="brand">Auris</span></div>
-            </div>
-            <div class="header-center">
-                <input class="search" placeholder="搜索歌曲、歌手或歌单..." v-model="searchQuery" @input="performSearch" />
-            </div>
-            <div class="header-right">
-                <div class="user">
-                    <template v-if="currentUser">
-                        <div class="avatar-section" role="button" tabindex="0" @click="showProfileModal = true" @keydown.enter="showProfileModal = true">
-                            <img v-if="currentUser.avatar" :src="currentUser.avatar" alt="avatar" class="avatar" />
-                            <span class="username">{{ currentUser.username }}</span>
-                        </div>
-                        <button class="btn small" @click="logout">退出</button>
-                    </template>
-                    <template v-else>
-                        <div class="avatar-section" role="button" tabindex="0" @click="showProfileModal = true" @keydown.enter="showProfileModal = true">
-                            <div class="avatar-placeholder"></div>
-                        </div>
-                        <button class="btn" @click="openAuth('login')">登录</button>
-                        <button class="btn green-outline" @click="openAuth('register')">注册</button>
-                    </template>
-                </div>
-                <button class="theme-toggle-btn" @click="toggleTheme" :title="isDarkMode ? '切换到日间模式' : '切换到夜间模式'">
-                    {{ isDarkMode ? '☀️' : '🌙' }}
-                </button>
-            </div>
-        </header>
-
-        <div class="main-area">
-            <!-- 左侧侧栏 -->
-            <aside class="sidebar">
-                <ul class="sidebar-list">
-                    <li class="side-item import" role="button" tabindex="0" @click="openFileDialog" @keydown.enter="openFileDialog">⇪  导入本地音乐</li>
-                    <li class="side-item web">☁  网页音频提取</li>
-                    <li class="side-item collection" role="button" tabindex="0" @click="setView('all')" @keydown.enter="setView('all')" :class="{ active: viewMode === 'all' }">▾ 单曲集合 <span class="count">({{ songList.length }})</span></li>
-                    <li class="side-item fav" role="button" tabindex="0" @click="setView('fav')" @keydown.enter="setView('fav')" :class="{ active: viewMode === 'fav' }">❤ 我喜欢的 <span class="count">({{ favCount }})</span></li>
-
-                    <!-- 歌单列表（可展开） -->
-                    <li class="side-item playlists" role="button" tabindex="0" @click="playlistsOpen = !playlistsOpen">
-                        <span class="expand-icon">{{ playlistsOpen ? '▾' : '▸' }}</span><span class="playlists-title">歌单列表</span>
-                    </li>
-                    <ul v-if="playlistsOpen" class="playlist-children">
-                        <li class="side-item create" role="button" tabindex="0" @click="createPlaylist">＋  创建歌单</li>
-                        <li v-if="!playlists.length" class="side-item empty-note">（当前无歌单）</li>
-                        <li v-for="pl in playlists" :key="pl.id" class="side-item playlist-item" :class="{ active: selectedPlaylistId === pl.id }" role="button" tabindex="0">
-                            <span @click.stop="selectPlaylist(pl.id)" class="playlist-name">{{ pl.name }} <span class="count">({{ pl.songs ? pl.songs.length : 0 }})</span></span>
-                            <div class="playlist-actions">
-                                <button class="playlist-edit-btn"
-                                        @click.stop="openEditPlaylistNameModal(pl.id)"
-                                        :title="'修改歌单名称'">
-                                    ✏️
-                                </button>
-                                <button class="playlist-delete-btn"
-                                        @click.stop="openDeletePlaylistConfirm(pl.id)"
-                                        :title="'删除歌单'">
-                                    🗑️
-                                </button>
-                            </div>
-                        </li>
-                    </ul>
-                </ul>
-                <div class="sidebar-empty">(歌单操作)</div>
-            </aside>
-
-            <!-- 右侧主内容区 -->
-            <main class="content">
-                <!-- 个人主页区域（独立追加） -->
-                <section class="profile-page" v-if="viewMode === 'profile'">
-                    <div class="profile-header">
-                        <!-- 个人信息卡片 -->
-                        <div class="profile-card">
-                            <div class="profile-avatar">
-                                <img v-if="currentUser && currentUser.avatar"
-                                     :src="currentUser.avatar"
-                                     alt="用户头像"
-                                     class="avatar-lg" />
-                                <div v-else class="avatar-placeholder">
-                                    {{ currentUser ? currentUser.username.charAt(0) : '👤' }}
-                                </div>
-                                <!-- 编辑头像按钮（登录后显示） -->
-                                <button v-if="currentUser"
-                                        class="btn small edit-avatar-btn"
-                                        @click="openAvatarDialog">
-                                    更换头像
-                                </button>
-                            </div>
-
-                            <div class="profile-info">
-                                <h2 class="profile-username">
-                                    <template v-if="editingProfile">
-                                        <input v-model="editProfileForm.username" class="profile-name-input" />
-                                    </template>
-                                    <template v-else>
-                                        {{ currentUser ? currentUser.username : '未登录' }}
-                                    </template>
-                                </h2>
-                                <p class="profile-email">{{ currentUser ? currentUser.email : '请登录以查看个人信息' }}</p>
-                                <div class="profile-stats">
-                                    <div class="stat-item">
-                                        <span class="stat-value">{{ songList.length }}</span>
-                                        <span class="stat-label">总歌曲</span>
-                                    </div>
-                                    <div class="stat-item">
-                                        <span class="stat-value">{{ favCount }}</span>
-                                        <span class="stat-label">收藏</span>
-                                    </div>
-                                    <div class="stat-item">
-                                        <span class="stat-value">{{ playlists.length }}</span>
-                                        <span class="stat-label">歌单</span>
-                                    </div>
-                                </div>
-                                <!-- 编辑个人信息按钮（登录后显示） -->
-                                <button v-if="currentUser"
-                                        class="btn green-outline profile-edit-btn"
-                                        @click="toggleEditProfile">
-                                    {{ editingProfile ? '保存' : '编辑信息' }}
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- 个人主页下的快捷入口 -->
-                        <div class="profile-actions">
-                            <button class="btn green" @click="setView('all')">查看所有歌曲</button>
-                            <button class="btn green" @click="setView('fav')">查看收藏</button>
-                            <button class="btn green" @click="createPlaylist">创建新歌单</button>
-                        </div>
-                    </div>
-
-                    <!-- 个人主页默认显示收藏的歌曲 -->
-                    <div class="profile-content">
-                        <h3 class="profile-content-title">我喜欢的歌曲</h3>
-                        <section class="playlist-table">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>歌曲名</th>
-                                        <th>时长</th>
-                                        <th>歌手/制作人</th>
-                                        <th>喜爱程度</th>
-                                        <th>操作</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr v-for="({ s, i }, idx) in favSongs" :key="i" :class="{ active: currentIndex === i }" @dblclick="playSong(i)">
-                                        <td class="title-col">
-                                            <div class="title-with-play">
-                                                <button class="play-icon-btn"
-                                                        @click.stop="handlePlayButtonClick(i)"
-                                                        :title="currentIndex === i && isPlaying ? '暂停' : '播放 ' + (s.name || '歌曲')"
-                                                        :disabled="!s.url || s.url === ''">
-                                                    {{ currentIndex === i && isPlaying ? '⏸' : '▶' }}
-                                                </button>
-                                                <span class="song-title-text">{{ s.name || '未知' }}</span>
-                                            </div>
-                                        </td>
-                                        <td class="time-col">{{ s.duration ? formatTime(s.duration) : '—' }}</td>
-                                        <td class="artist-col">{{ s.artist || '—' }}</td>
-                                        <td class="fav-col"><button :class="['fav-btn', { filled: s.fav }]" @click.stop="toggleFav(i)">{{ s.fav ? '❤' : '♡' }}</button></td>
-                                        <td class="action-col">
-                                            <div class="action-buttons">
-                                                <button v-if="!s.url || s.url === ''"
-                                                        class="icon-btn action-btn"
-                                                        @click.stop="openUploadAudioModal(i)"
-                                                        :title="'上传音频 ' + (s.name || '歌曲')">
-                                                    📤
-                                                </button>
-                                                <button class="icon-btn action-btn"
-                                                        @click.stop="openUploadCoverModal(i)"
-                                                        :title="'上传封面 ' + (s.name || '歌曲')">
-                                                    🖼️
-                                                </button>
-                                                <button class="icon-btn action-btn danger"
-                                                        @click.stop="openSongDeleteConfirm(i)"
-                                                        :title="'删除 ' + (s.name || '歌曲')">
-                                                    🗑
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    <tr v-if="favSongs.length === 0">
-                                        <td colspan="5" class="empty">暂无收藏的歌曲。</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </section>
-                    </div>
-                </section>
-
-                <!-- 头像上传输入（独立追加，放在原有 cover-ctrl 输入框下方） -->
-                <input id="avatar-ctrl" ref="avatarInput" class="sr-only" type="file" accept="image/*" @change="handleAvatarUpload" />
-                <!-- 歌单详情区域 或 搜索结果区域 -->
-                <section class="playlist-detail" v-if="viewMode !== 'search'">
-                    <div class="cover-and-title">
-                        <div class="cover" :style="coverStyle" role="button" tabindex="0" @click="viewMode==='playlist' && editing ? openCoverDialog() : null" @keydown.enter="viewMode==='playlist' && editing ? openCoverDialog() : null">
-                            <div class="cover-placeholder" v-if="!(viewMode === 'playlist' && selectedPlaylist && selectedPlaylist.cover)">
-                                <!-- 默认美观图标（SVG） -->
-                                <svg class="cover-default-icon" viewBox="0 0 64 64" role="img" aria-label="默认封面">
-                                    <defs>
-                                        <linearGradient id="coverGrad" x1="0" x2="1" y1="0" y2="1">
-                                            <stop offset="0" stop-color="var(--bg-secondary)" />
-                                            <stop offset="1" stop-color="var(--bg-tertiary)" />
-                                        </linearGradient>
-                                    </defs>
-                                    <rect x="6" y="6" width="52" height="52" rx="8" fill="url(#coverGrad)" />
-                                    <path d="M40 20v16a6 6 0 1 1-4-5.2V22l-10 3v12" fill="none" stroke="var(--primary)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
-                                </svg>
-                            </div>
-                            <!-- 编辑时显示覆盖操作 -->
-                            <div class="cover-overlay" v-if="viewMode === 'playlist' && editing">
-                                <button class="btn small" @click.stop="openCoverDialog">上传封面</button>
-                                <button v-if="selectedPlaylist && selectedPlaylist.cover" class="btn small danger" @click.stop="removeCover">移除封面</button>
-                            </div>
-                        </div>
-                        <h2 class="main-title" :class="{ 'playlist-title': viewMode === 'playlist' }">
-                            <template v-if="editing && viewMode === 'playlist'">
-                                <input class="plist-name-input" v-model="editName" />
-                            </template>
-                            <template v-else>
-                                {{ currentTitle }}
-                            </template>
-                        </h2>
-                    </div>
-
-                    <!-- 区分不同视图的布局结构 -->
-                    <div class="meta" :class="{ 'collection-meta': viewMode === 'all' || viewMode === 'fav' }">
-                        <!-- 歌单模式：先显示简介，再显示创建人 -->
-                        <template v-if="viewMode === 'playlist'">
-                            <!-- 非编辑状态：白底静态 label -->
-                            <div v-if="!editing" class="desc-label">{{ selectedPlaylist ? selectedPlaylist.desc || '暂无简介' : '暂无简介' }}</div>
-                            <!-- 编辑状态：可输入 textarea -->
-                            <textarea v-else v-model="editDesc" class="desc" rows="4"></textarea>
-                            <div class="creator">创建人：<strong>Name</strong></div>
-                        </template>
-
-                        <!-- 单曲集合/我喜欢的：先显示创建人 -->
-                        <template v-else>
-                            <div class="creator" :class="{ 'collection-creator': viewMode === 'all' || viewMode === 'fav' }">创建人：<strong>Name</strong></div>
-                        </template>
-
-                        <div class="meta-actions" :class="{ 'collection-actions': viewMode === 'all' || viewMode === 'fav' }">
-                            <!-- 添加歌曲按钮（仅歌单模式） -->
-                            <button v-if="viewMode === 'playlist'" class="btn green" :disabled="!selectedPlaylist" @click="openAddTrackModal">
-                                ＋ 添加歌曲
-                            </button>
-                            <!-- 管理歌曲按钮（所有模式启用） -->
-                            <button class="btn green-outline" @click="openManageSongs">管理歌曲</button>
-                            <!-- 编辑内容按钮（仅歌单模式） -->
-                            <button v-if="viewMode === 'playlist'" class="btn green-outline" :disabled="!selectedPlaylist" @click="toggleEditContent">{{ editing ? '保存' : '编辑内容' }}</button>
-                            <button v-if="editing && selectedPlaylist" class="btn danger" @click="deleteConfirmOpen = true">删除歌单</button>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- 搜索结果区域 -->
-                <section class="search-results" v-if="viewMode === 'search'">
-                    <h2 class="search-title">搜索结果</h2>
-                    <p class="search-query" v-if="searchQuery">关键词：“{{ searchQuery }}”</p>
-                </section>
-
-                <!-- 歌曲表格 -->
-                <section class="playlist-table">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>歌曲名</th>
-                                <th>时长</th>
-                                <th>歌手/制作人</th>
-                                <th>喜爱程度</th>
-                                <th>操作</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr v-for="({ s, i }, idx) in displayed" :key="i" :class="{ active: currentIndex === i }" @dblclick="playSong(i)">
-                                <td class="title-col">
-                                    <div class="title-with-play">
-                                        <button class="play-icon-btn"
-                                                @click.stop="handlePlayButtonClick(i)"
-                                                :title="currentIndex === i && isPlaying ? '暂停' : '播放 ' + (s.name || '歌曲')"
-                                                :disabled="!s.url || s.url === ''">
-                                            {{ currentIndex === i && isPlaying ? '⏸' : '▶' }}
-                                        </button>
-                                        <span class="song-title-text">{{ s.name || '未知' }}</span>
-                                    </div>
-                                </td>
-                                <td class="time-col">{{ s.duration ? formatTime(s.duration) : '—' }}</td>
-                                <td class="artist-col">{{ s.artist || '—' }}</td>
-                                <td class="fav-col"><button :class="['fav-btn', { filled: s.fav }]" @click.stop="toggleFav(i)">{{ s.fav ? '❤' : '♡' }}</button></td>
-                                <td class="action-col">
-                                    <div class="action-buttons">
-                                        <button v-if="!s.url || s.url === ''"
-                                                class="icon-btn action-btn"
-                                                @click.stop="openUploadAudioModal(i)"
-                                                :title="'上传音频 ' + (s.name || '歌曲')">
-                                            📤
-                                        </button>
-                                        <button class="icon-btn action-btn"
-                                                @click.stop="openUploadCoverModal(i)"
-                                                :title="'上传封面 ' + (s.name || '歌曲')">
-                                            🖼️
-                                        </button>
-                                        <button class="icon-btn action-btn danger"
-                                                @click.stop="openSongDeleteConfirm(i)"
-                                                :title="'删除 ' + (s.name || '歌曲')">
-                                            🗑
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                            <tr v-if="displayed.length === 0">
-                                <td colspan="5" class="empty">暂无歌曲可显示。</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </section>
-            </main>
+  <div class="player-container">
+    <!-- 顶部 header（包含 logo、搜索、用户区域） -->
+    <header class="app-header">
+      <div class="header-left">
+        <div class="logo" role="button" tabindex="0" @click="openFileDialog" @keydown.enter="openFileDialog">🎧 <span class="brand">Auris</span></div>
+      </div>
+      <div class="header-center">
+        <input class="search" placeholder="搜索歌曲、歌手或歌单..." v-model="searchQuery" @input="performSearch" />
+      </div>
+      <div class="header-right">
+        <div class="user">
+          <template v-if="currentUser">
+            <img v-if="currentUser.avatar" :src="currentUser.avatar" alt="avatar" class="avatar" />
+            <span class="username">{{ currentUser.username }}</span>
+            <button class="btn small" @click="logout">退出</button>
+          </template>
+          <template v-else>
+            <button class="btn" @click="openAuth('login')">登录</button>
+            <button class="btn green-outline" @click="openAuth('register')">注册</button>
+          </template>
         </div>
+        <button class="theme-toggle-btn" @click="toggleTheme" :title="isDarkMode ? '切换到日间模式' : '切换到夜间模式'">
+          {{ isDarkMode ? '☀️' : '🌙' }}
+        </button>
+      </div>
+    </header>
 
-        <!-- 底部播放器控制栏 -->
-        <footer class="bottom-bar"@click.self="toggleDetail">
-            <div class="player-controls">
-                <button class="icon-btn prev-btn" @click="playPrev">◀◀</button>
-                <button class="play-btn" :class="{ playing: isPlaying }" @click="togglePlay">{{ isPlaying ? '暂停' : '播放' }}</button>
-                <!-- 优化爱心按钮的边界校验逻辑 -->
-                <button class="icon-btn fav-toggle"
-                        :class="{ filled: songList[currentIndex]?.fav }"
-                        @click="toggleCurrentFav"
-                        :disabled="currentIndex === -1"
-                        :title="songList[currentIndex]?.fav ? '取消喜欢' : '添加到我喜欢'">
-                    {{ songList[currentIndex]?.fav ? '❤' : '♡' }}
-                </button>
-                <button class="icon-btn next-btn" @click="playNext">▶▶</button>
-            </div>
+    <div class="main-area">
+      <!-- 左侧侧栏 -->
+      <aside class="sidebar">
+        <ul class="sidebar-list">
+          <li class="side-item create" role="button" tabindex="0" @click="createPlaylist">＋  创建歌单</li>
+          <li class="side-item import" role="button" tabindex="0" @click="openFileDialog" @keydown.enter="openFileDialog">⇪  导入本地音乐</li>
+          <li class="side-item web">☁  网页音频提取</li>
+          <li class="side-item profile" role="button" tabindex="0" @click="setView('profile')" @keydown.enter="setView('profile')" :class="{ active: viewMode === 'profile' }"><span class="icon">🏠</span> 个人主页</li>
+          <li class="side-item collection" role="button" tabindex="0" @click="setView('all')" @keydown.enter="setView('all')" :class="{ active: viewMode === 'all' }"><span class="icon">🎵</span>▾ 单曲集合 <span class="count">({{ songList.length }})</span></li>
+          <li class="side-item fav" role="button" tabindex="0" @click="setView('fav')" @keydown.enter="setView('fav')" :class="{ active: viewMode === 'fav' }">❤ 我喜欢的 <span class="count">({{ favCount }})</span></li>
 
-            <div class="player-progress">
-                <input class="range-progress" type="range" min="0" :max="audioDuration || 100" v-model="currentTime" @input="seekAudio" />
-                <div class="time-row">
-                    <span class="current-time">{{ formatTime(currentTime) }}</span>
-                    <span class="sep">/</span>
-                    <span class="duration">{{ formatTime(audioDuration) }}</span>
-                </div>
-            </div>
+          <!-- 歌单列表（可展开） -->
+          <li class="side-item playlists" role="button" tabindex="0" @click="playlistsOpen = !playlistsOpen">
+            <span class="expand-icon">{{ playlistsOpen ? '▾' : '▸' }}</span>
+            <span class="playlists-title">歌单列表</span>
+          </li>
+          <ul v-if="playlistsOpen" class="playlist-children">
+            <li v-if="!playlists.length" class="side-item empty-note">（当前无歌单）</li>
+            <li v-for="pl in playlists" :key="pl.id" class="side-item playlist-item" :class="{ active: selectedPlaylistId === pl.id }" role="button" tabindex="0">
+              <span @click.stop="selectPlaylist(pl.id)" class="playlist-name">{{ pl.name }} <span class="count">({{ pl.songs ? pl.songs.length : 0 }})</span></span>
+              <div class="playlist-actions">
+                <button 
+                  class="playlist-edit-btn" 
+                  @click.stop="openEditPlaylistNameModal(pl.id)"
+                  :title="'修改歌单名称'"
+                >✏️</button>
+                <button 
+                  class="playlist-delete-btn" 
+                  @click.stop="openDeletePlaylistConfirm(pl.id)"
+                  :title="'删除歌单'"
+                >🗑️</button>
+              </div>
+            </li>
+          </ul>
+        </ul>
+        <div class="sidebar-empty">(歌单操作)</div>
+      </aside>
 
-            <div class="player-extra">
-                <button class="icon-btn" @click="cyclePlayMode" :title="playModeTitle">{{ playModeIcon }}</button>
-                <!-- 音量控制容器 - 修改触发逻辑 -->
-                <div class="vol-container"
-                     @mouseenter="handleVolMouseEnter"
-                     @mouseleave="handleVolMouseLeave">
-                    <button class="icon-btn" @click="toggleMute" :title="isMuted ? '已静音' : '静音 / 音量'">{{ speakerIcon }}</button>
-                    <!-- 音量滑块 - 仅鼠标悬浮时显示 -->
-                    <div class="vol-popup" v-show="showVolSlider">
-                        <input class="range vol-vertical" type="range" min="0" max="1" step="0.01" v-model="audioVolume" @input="changeVolume" />
-                    </div>
-                </div>
-            </div>
-        </footer>
-
-        <!-- 个人主页模态框 -->
-        <transition name="fade">
-            <section v-if="showProfileModal" class="profile-modal">
-                <!-- 遮罩 -->
-                <div class="modal-mask" @click="showProfileModal = false"></div>
-                
-                <div class="modal-content">
-                    <!-- 关闭按钮 -->
-                    <button class="modal-close" @click="showProfileModal = false">×</button>
-                    
-                    <!-- 个人主页内容 -->
-                    <div class="profile-header">
-                        <!-- 个人信息卡片 -->
-                        <div class="profile-card">
-                            <div class="profile-avatar">
-                                <img v-if="currentUser && currentUser.avatar"
-                                     :src="currentUser.avatar"
-                                     alt="用户头像"
-                                     class="avatar-lg" />
-                                <div v-else class="avatar-placeholder">
-                                    {{ currentUser ? currentUser.username.charAt(0) : '👤' }}
-                                </div>
-                                <!-- 编辑头像按钮（登录后显示） -->
-                                <button v-if="currentUser"
-                                        class="btn small edit-avatar-btn"
-                                        @click="openAvatarDialog">
-                                    更换头像
-                                </button>
-                            </div>
-
-                            <div class="profile-info">
-                                <h2 class="profile-username">
-                                    <template v-if="editingProfile">
-                                        <input v-model="editProfileForm.username" class="profile-name-input" />
-                                    </template>
-                                    <template v-else>
-                                        {{ currentUser ? currentUser.username : '未登录' }}
-                                    </template>
-                                </h2>
-                                <p class="profile-email">{{ currentUser ? currentUser.email : '请登录以查看个人信息' }}</p>
-                                <div class="profile-stats">
-                                    <div class="stat-item">
-                                        <span class="stat-value">{{ songList.length }}</span>
-                                        <span class="stat-label">总歌曲</span>
-                                    </div>
-                                    <div class="stat-item">
-                                        <span class="stat-value">{{ favCount }}</span>
-                                        <span class="stat-label">收藏</span>
-                                    </div>
-                                    <div class="stat-item">
-                                        <span class="stat-value">{{ playlists.length }}</span>
-                                        <span class="stat-label">歌单</span>
-                                    </div>
-                                </div>
-                                <!-- 编辑个人信息按钮（登录后显示） -->
-                                <button v-if="currentUser"
-                                        class="btn green-outline profile-edit-btn"
-                                        @click="toggleEditProfile">
-                                    {{ editingProfile ? '保存' : '编辑信息' }}
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- 个人主页下的快捷入口 -->
-                        <div class="profile-actions">
-                            <button class="btn green" @click="setView('all'); showProfileModal = false">查看所有歌曲</button>
-                            <button class="btn green" @click="setView('fav'); showProfileModal = false">查看收藏</button>
-                            <button class="btn green" @click="createPlaylist">创建新歌单</button>
-                        </div>
-                    </div>
-
-                    <!-- 个人主页默认显示收藏的歌曲 -->
-                    <div class="profile-content">
-                        <h3 class="profile-content-title">我喜欢的歌曲</h3>
-                        <section class="playlist-table">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th style="width: 50px;">序号</th>
-                                        <th style="width: 50px;">播放</th>
-                                        <th style="width: 50%;">歌曲标题</th>
-                                        <th style="width: 20%;">艺术家</th>
-                                        <th style="width: 10%;">时长</th>
-                                        <th style="width: 50px;">操作</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr v-for="(song, index) in songList.filter(s => s.fav)" 
-                                        :key="song.id" 
-                                        class="song-row"
-                                        @click="playSong(song)" 
-                                        :class="{ active: currentSong && currentSong.id === song.id }">
-                                        <td>{{ index + 1 }}</td>
-                                        <td>
-                                            <button class="btn-icon small" @click.stop="togglePlayPause(song)">
-                                                {{ currentSong && currentSong.id === song.id && isPlaying ? '⏸️' : '▶️' }}
-                                            </button>
-                                        </td>
-                                        <td>{{ song.title }}</td>
-                                        <td>{{ song.artist }}</td>
-                                        <td>{{ formatTime(song.duration) }}</td>
-                                        <td>
-                                            <button class="btn-icon" @click.stop="toggleFavorite(song)">
-                                                {{ song.fav ? '❤️' : '🤍' }}
-                                            </button>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </section>
-                    </div>
-                </div>
-            </section>
-        </transition>
-        
-        <!-- 单曲详情 / 歌词面板 -->
-        <transition name="slide-up">
-            <section v-show="showDetail"
-                     class="song-detail"
-                     @click.self="showDetail = false">
-                <!-- 遮罩 -->
-                <div class="detail-mask" @click="showDetail = false"></div>
-
-                <div class="detail-content">
-                    <!-- 顶部：封面 + 信息 + 歌词 -->
-                    <div class="detail-top">
-                        <!-- 左侧：封面 + 信息 -->
-                        <aside class="detail-left">
-                            <img class="cover"
-                                 :src="currentSong?.coverUrl || defaultCover"
-                                 alt="cover" />
-                            <h2 class="title">{{ currentSong?.name || '未知歌曲' }}</h2>
-                            <p class="artist">{{ currentSong?.artist || '未知歌手' }}</p>
-                            <p class="album">{{ currentSong?.album || '未知专辑' }}</p>
-                        </aside>
-
-                        <!-- 右侧：滚动歌词 -->
-                        <main class="detail-right">
-                            <ul ref="lrcList" class="lrc-list">
-                                <li v-for="(line, idx) in parsedLrc"
-                                    :key="idx"
-                                    :class="{ active: idx === activeLrcIndex }">
-                                    {{ line.text }}
-                                </li>
-                            </ul>
-                        </main>
+      <!-- 右侧主内容区 -->
+      <main class="content">
+        <!-- 个人主页区域（独立追加） -->
+<section class="profile-page" v-if="viewMode === 'profile'">
+  <div class="profile-header">
+    <!-- 个人信息卡片 -->
+    <div class="profile-card">
+      <div class="profile-avatar">
+        <img 
+          v-if="currentUser && currentUser.avatar" 
+          :src="currentUser.avatar" 
+          alt="用户头像" 
+          class="avatar-lg"
+        />
+        <div v-else class="avatar-placeholder">
+          {{ currentUser ? currentUser.username.charAt(0) : '👤' }}
         </div>
-
-            <!-- 内置播放器控制栏 -->
-            <footer class="bottom-bar built-in" @click.self="showDetail = false">
-                <div class="player-controls">
-                    <button class="icon-btn prev-btn" @click="playPrev">◀◀</button>
-                    <button class="play-btn" :class="{ playing: isPlaying }" @click="togglePlay">{{ isPlaying ? '暂停' : '播放' }}</button>
-                    <button class="icon-btn fav-toggle"
-                            :class="{ filled: songList[currentIndex]?.fav }"
-                            @click="toggleCurrentFav"
-                            :disabled="currentIndex === -1"
-                            :title="songList[currentIndex]?.fav ? '取消喜欢' : '添加到我喜欢'">
-                        {{ songList[currentIndex]?.fav ? '❤' : '♡' }}
-                    </button>
-                    <button class="icon-btn next-btn" @click="playNext">▶▶</button>
-                </div>
-
-                <div class="player-progress">
-                    <input class="range-progress" type="range" min="0" :max="audioDuration || 100" v-model="currentTime" @input="seekAudio" />
-                    <div class="time-row">
-                        <span class="current-time">{{ formatTime(currentTime) }}</span>
-                        <span class="sep">/</span>
-                        <span class="duration">{{ formatTime(audioDuration) }}</span>
-                    </div>
-                </div>
-
-                <div class="player-extra">
-                    <button class="icon-btn" @click="cyclePlayMode" :title="playModeTitle">{{ playModeIcon }}</button>
-                    <div class="vol-container"
-                         @mouseenter="handleVolMouseEnter"
-                         @mouseleave="handleVolMouseLeave">
-                        <button class="icon-btn" @click="toggleMute" :title="isMuted ? '已静音' : '静音 / 音量'">{{ speakerIcon }}</button>
-                        <div class="vol-popup" v-show="showVolSlider">
-                            <input class="range vol-vertical" type="range" min="0" max="1" step="0.01" v-model="audioVolume" @input="changeVolume" />
-                        </div>
-                    </div>
-                </div>
-            </footer>
+        <!-- 编辑头像按钮（登录后显示） -->
+        <button 
+          v-if="currentUser" 
+          class="btn small edit-avatar-btn" 
+          @click="openAvatarDialog"
+        >
+          更换头像
+        </button>
+      </div>
+      
+      <div class="profile-info">
+        <h2 class="profile-username">
+          <template v-if="editingProfile">
+            <input v-model="editProfileForm.username" class="profile-name-input" />
+          </template>
+          <template v-else>
+            {{ currentUser ? currentUser.username : '未登录' }}
+          </template>
+        </h2>
+        <p class="profile-email">{{ currentUser ? currentUser.email : '请登录以查看个人信息' }}</p>
+        <div class="profile-stats">
+          <div class="stat-item">
+            <span class="stat-value">{{ songList.length }}</span>
+            <span class="stat-label">总歌曲</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value">{{ favCount }}</span>
+            <span class="stat-label">收藏</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value">{{ playlists.length }}</span>
+            <span class="stat-label">歌单</span>
+          </div>
         </div>
-            </section>
-        </transition>
-
-        <!-- 管理歌曲模态 -->
-        <div v-if="manageModalOpen" class="modal-overlay" @click.self="closeManageSongs">
-            <div class="modal">
-                <h3>从单曲集合选择歌曲</h3>
-                <div class="modal-list">
-                    <div v-if="!songList.length" class="empty">当前没有可供选择的歌曲。</div>
-                    <div v-for="(s, i) in songList" :key="i" class="modal-row">
-                        <label>
-                            <input type="checkbox" :checked="manageSelection.has(i)" @change="toggleSongInManage(i)" />
-                            {{ s.name }} <span class="muted">{{ s.duration ? '(' + formatTime(s.duration) + ')' : '' }}</span>
-                        </label>
-                        <!-- 管理歌曲时可直接操作喜爱和删除 -->
-                        <button :class="['fav-btn', { filled: s.fav }]" @click.stop="toggleFav(i)" style="margin-left:8px;">{{ s.fav ? '❤' : '♡' }}</button>
-                        <button class="icon-btn" @click.stop="openSongDeleteConfirm(i)" title="删除" style="margin-left:6px;">🗑</button>
-                    </div>
-                </div>
-                <div class="modal-actions">
-                    <button class="btn" @click="closeManageSongs">取消</button>
-                    <button class="btn btn-primary" @click="saveManageSongs">保存</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- 单曲删除确认弹窗 -->
-        <div v-if="songDeleteConfirmOpen" class="modal-overlay" @click.self="songDeleteConfirmOpen = false">
-            <div class="modal">
-                <h3>确认删除歌曲？</h3>
-                <p class="muted">删除后将从所有歌单中移除，且无法恢复</p>
-                <div class="modal-actions">
-                    <button class="btn green-outline" @click="songDeleteConfirmOpen = false">取消</button>
-                    <button class="btn danger" @click="confirmDeleteSong">确认删除</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- 歌单删除确认弹窗 -->
-        <div v-if="deleteConfirmOpen" class="modal-overlay" @click.self="deleteConfirmOpen = false">
-            <div class="modal">
-                <h3>确认删除歌单？</h3>
-                <p class="muted">
-                    确定要删除歌单"<strong>{{ deletingPlaylistId ? playlists.find(p => p.id === deletingPlaylistId)?.name : selectedPlaylist?.name || '' }}</strong>"吗？
-                </p>
-                <p class="muted" style="font-size: 0.85rem; margin-top: 0.5rem;">删除后歌单内歌曲不会从单曲集合中移除</p>
-                <div class="modal-actions">
-                    <button class="btn green-outline" @click="deleteConfirmOpen = false">取消</button>
-                    <button class="btn danger" @click="confirmDeletePlaylist">确认删除</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- 隐藏上传输入，保留可访问性 -->
-        <input id="file-ctrl" ref="fileInput" class="sr-only" type="file" accept=".mp3,.wav" multiple @change="handleFileUpload" />
-        <input id="cover-ctrl" ref="coverInput" class="sr-only" type="file" accept="image/*" @change="handleCoverUpload" />
-
-        <!-- 修改歌单名称模态 -->
-        <div v-if="editPlaylistNameModalOpen" class="modal-overlay" @click.self="closeEditPlaylistNameModal">
-            <div class="modal edit-playlist-name-modal">
-                <h3>修改歌单名称</h3>
-                <div class="edit-playlist-name-form">
-                    <label class="form-row">
-                        <span class="form-label">歌单名称 <span class="required">*</span></span>
-                        <input ref="editPlaylistNameInput"
-                               v-model="editPlaylistNameForm.name"
-                               placeholder="请输入歌单名称"
-                               maxlength="50"
-                               @keydown.enter="confirmEditPlaylistName" />
-                        <div class="form-error" v-if="editPlaylistNameError.name">{{ editPlaylistNameError.name }}</div>
-                    </label>
-                    <div class="form-error" v-if="editPlaylistNameError.general">{{ editPlaylistNameError.general }}</div>
-                    <div class="modal-actions">
-                        <button class="btn green-outline" @click="closeEditPlaylistNameModal" :disabled="editingPlaylistName">取消</button>
-                        <button class="btn green" @click="confirmEditPlaylistName" :disabled="editingPlaylistName">
-                            <span v-if="editingPlaylistName">保存中...</span>
-                            <span v-else>保存</span>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- 上传封面模态 -->
-        <div v-if="uploadCoverModalOpen" class="modal-overlay" @click.self="closeUploadCoverModal">
-            <div class="modal upload-cover-modal">
-                <h3>上传封面图片</h3>
-                <div class="upload-cover-form">
-                    <div class="form-section">
-                        <h4 class="form-section-title">歌曲信息</h4>
-                        <div class="song-info-display">
-                            <div class="info-item">
-                                <span class="info-label">歌曲名称：</span>
-                                <span class="info-value">{{ uploadCoverSong?.name || '未知哦哦哦' }}</span>
-                            </div>
-                            <div class="info-item">
-                                <span class="info-label">歌手：</span>
-                                <span class="info-value">{{ uploadCoverSong?.artist || '未知' }}</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="form-section">
-                        <h4 class="form-section-title">封面图片</h4>
-                        <div class="file-upload-area">
-                            <input ref="uploadCoverFileInput"
-                                   type="file"
-                                   accept="image/*"
-                                   @change="handleUploadCoverFileSelect"
-                                   class="sr-only"
-                                   id="upload-cover-file-input" />
-                            <div v-if="!uploadCoverForm.file" class="file-upload-placeholder" @click="openUploadCoverFileDialog">
-                                <span class="upload-icon">🖼️</span>
-                                <span>点击选择封面图片</span>
-                                <span class="upload-hint">支持 JPG、PNG、GIF 等图片格式</span>
-                            </div>
-                            <div v-else class="file-upload-selected">
-                                <div class="file-info">
-                                    <img :src="uploadCoverForm.preview" alt="封面预览" class="cover-preview-large" />
-                                    <div class="file-details">
-                                        <div class="file-name">{{ uploadCoverForm.file.name }}</div>
-                                        <div class="file-size">{{ formatFileSize(uploadCoverForm.file.size) }}</div>
-                                    </div>
-                                </div>
-                                <button class="btn small" @click="removeUploadCoverFile">移除</button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="form-error" v-if="uploadCoverError">{{ uploadCoverError }}</div>
-                    <div class="modal-actions">
-                        <button class="btn green-outline" @click="closeUploadCoverModal" :disabled="uploadingCover">取消</button>
-                        <button class="btn green" @click="confirmUploadCover" :disabled="uploadingCover || !uploadCoverForm.file">
-                            <span v-if="uploadingCover">上传中...</span>
-                            <span v-else>上传封面</span>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- 上传音频模态 -->
-        <div v-if="uploadAudioModalOpen" class="modal-overlay" @click.self="closeUploadAudioModal">
-            <div class="modal upload-audio-modal">
-                <h3>上传音频文件</h3>
-                <div class="upload-audio-form">
-                    <div class="form-section">
-                        <h4 class="form-section-title">歌曲信息</h4>
-                        <div class="song-info-display">
-                            <div class="info-item">
-                                <span class="info-label">歌曲名称：</span>
-                                <span class="info-value">{{ uploadAudioSong?.name || '未知' }}</span>
-                            </div>
-                            <div class="info-item">
-                                <span class="info-label">歌手：</span>
-                                <span class="info-value">{{ uploadAudioSong?.artist || '未知' }}</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="form-section">
-                        <h4 class="form-section-title">音频文件</h4>
-                        <div class="file-upload-area">
-                            <input ref="uploadAudioFileInput"
-                                   type="file"
-                                   accept="audio/*,.mp3,.wav"
-                                   @change="handleUploadAudioFileSelect"
-                                   class="sr-only"
-                                   id="upload-audio-file-input" />
-                            <div v-if="!uploadAudioForm.file" class="file-upload-placeholder" @click="openUploadAudioFileDialog">
-                                <span class="upload-icon">📁</span>
-                                <span>点击选择音频文件</span>
-                                <span class="upload-hint">支持 MP3、WAV 格式</span>
-                            </div>
-                            <div v-else class="file-upload-selected">
-                                <div class="file-info">
-                                    <span class="file-icon">🎵</span>
-                                    <div class="file-details">
-                                        <div class="file-name">{{ uploadAudioForm.file.name }}</div>
-                                        <div class="file-size">{{ formatFileSize(uploadAudioForm.file.size) }}</div>
-                                    </div>
-                                </div>
-                                <button class="btn small" @click="removeUploadAudioFile">移除</button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="form-error" v-if="uploadAudioError">{{ uploadAudioError }}</div>
-                    <div class="modal-actions">
-                        <button class="btn green-outline" @click="closeUploadAudioModal" :disabled="uploadingAudio">取消</button>
-                        <button class="btn green" @click="confirmUploadAudio" :disabled="uploadingAudio || !uploadAudioForm.file">
-                            <span v-if="uploadingAudio">上传中...</span>
-                            <span v-else>上传音频</span>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- 添加歌曲模态 -->
-        <div v-if="addTrackModalOpen" class="modal-overlay" @click.self="closeAddTrackModal">
-            <div class="modal add-track-modal">
-                <h3>添加歌曲</h3>
-                <div class="add-track-form">
-                    <div class="form-section">
-                        <h4 class="form-section-title">歌曲信息</h4>
-                        <label class="form-row">
-                            <span class="form-label">歌曲名称 <span class="required">*</span></span>
-                            <input ref="trackTitleInput"
-                                   v-model="newTrackForm.title"
-                                   placeholder="请输入歌曲名称"
-                                   maxlength="100"
-                                   @keydown.enter="confirmAddTrack" />
-                            <div class="form-error" v-if="addTrackError.title">{{ addTrackError.title }}</div>
-                        </label>
-                        <label class="form-row">
-                            <span class="form-label">歌手 <span class="required">*</span></span>
-                            <input v-model="newTrackForm.artist"
-                                   placeholder="请输入歌手名称"
-                                   maxlength="50"
-                                   @keydown.enter="confirmAddTrack" />
-                            <div class="form-error" v-if="addTrackError.artist">{{ addTrackError.artist }}</div>
-                        </label>
-                        <label class="form-row">
-                            <span class="form-label">专辑</span>
-                            <input v-model="newTrackForm.album"
-                                   placeholder="请输入专辑名称（可选）"
-                                   maxlength="50" />
-                        </label>
-                    </div>
-
-                    <div class="form-section">
-                        <h4 class="form-section-title">音频文件</h4>
-                        <div class="file-upload-area">
-                            <input ref="trackFileInput"
-                                   type="file"
-                                   accept="audio/*,.mp3,.wav"
-                                   @change="handleTrackFileSelect"
-                                   class="sr-only"
-                                   id="track-file-input" />
-                            <div v-if="!newTrackForm.file" class="file-upload-placeholder" @click="openTrackFileDialog">
-                                <span class="upload-icon">📁</span>
-                                <span>点击选择音频文件（可选）</span>
-                                <span class="upload-hint">支持 MP3、WAV 格式</span>
-                            </div>
-                            <div v-else class="file-upload-selected">
-                                <div class="file-info">
-                                    <span class="file-icon">🎵</span>
-                                    <div class="file-details">
-                                        <div class="file-name">{{ newTrackForm.file.name }}</div>
-                                        <div class="file-size">{{ formatFileSize(newTrackForm.file.size) }}</div>
-                                    </div>
-                                </div>
-                                <button class="btn small" @click="removeTrackFile">移除</button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="form-section">
-                        <h4 class="form-section-title">封面图片（可选）</h4>
-                        <div class="file-upload-area">
-                            <input ref="trackCoverInput"
-                                   type="file"
-                                   accept="image/*"
-                                   @change="handleTrackCoverSelect"
-                                   class="sr-only"
-                                   id="track-cover-input" />
-                            <div v-if="!newTrackForm.coverFile" class="file-upload-placeholder" @click="openTrackCoverDialog">
-                                <span class="upload-icon">🖼️</span>
-                                <span>点击选择封面图片（可选）</span>
-                            </div>
-                            <div v-else class="file-upload-selected">
-                                <div class="file-info">
-                                    <img :src="newTrackForm.coverPreview" alt="封面预览" class="cover-preview" />
-                                    <div class="file-details">
-                                        <div class="file-name">{{ newTrackForm.coverFile.name }}</div>
-                                    </div>
-                                </div>
-                                <button class="btn small" @click="removeTrackCover">移除</button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="form-error" v-if="addTrackError.general">{{ addTrackError.general }}</div>
-                    <div class="modal-actions">
-                        <button class="btn green-outline" @click="closeAddTrackModal" :disabled="addingTrack">取消</button>
-                        <button class="btn green" @click="confirmAddTrack" :disabled="addingTrack">
-                            <span v-if="addingTrack">添加中...</span>
-                            <span v-else>添加歌曲</span>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- 创建歌单模态 -->
-        <div v-if="createPlaylistModalOpen" class="modal-overlay" @click.self="closeCreatePlaylistModal">
-            <div class="modal create-playlist-modal">
-                <h3>创建新歌单</h3>
-                <div class="create-playlist-form">
-                    <label class="form-row">
-                        <span class="form-label">歌单名称 <span class="required">*</span></span>
-                        <input ref="playlistNameInput"
-                               v-model="newPlaylistForm.name"
-                               placeholder="请输入歌单名称"
-                               maxlength="50"
-                               @keydown.enter="confirmCreatePlaylist" />
-                        <div class="form-error" v-if="createPlaylistError.name">{{ createPlaylistError.name }}</div>
-                    </label>
-                    <label class="form-row">
-                        <span class="form-label">歌单描述</span>
-                        <textarea v-model="newPlaylistForm.desc"
-                                  placeholder="请输入歌单描述（可选）"
-                                  rows="3"
-                                  maxlength="200"></textarea>
-                    </label>
-                    <div class="form-error" v-if="createPlaylistError.general">{{ createPlaylistError.general }}</div>
-                    <div class="modal-actions">
-                        <button class="btn green-outline" @click="closeCreatePlaylistModal" :disabled="creatingPlaylist">取消</button>
-                        <button class="btn green" @click="confirmCreatePlaylist" :disabled="creatingPlaylist">
-                            <span v-if="creatingPlaylist">创建中...</span>
-                            <span v-else>创建</span>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- 登录 / 注册 模态（全局唯一，开屏/内部共用 ✅ 核心统一） -->
-        <div v-if="authModalOpen" class="modal-overlay" @click.self="closeAuth">
-            <div class="modal auth-modal">
-                <h3>{{ authMode === 'login' ? '登录' : '注册' }}</h3>
-                <div class="auth-form">
-                    <template v-if="authMode === 'register'">
-                        <label class="auth-row">用户名 <input v-model="authForm.username" placeholder="用户名" /></label>
-                    </template>
-                    <label class="auth-row">邮箱 <input ref="authEmailInput" v-model="authForm.email" placeholder="邮箱" /></label>
-                    <label class="auth-row">密码 <input type="password" v-model="authForm.password" placeholder="密码" /></label>
-                    <div class="auth-error" v-if="authError">{{ authError }}</div>
-                    <div class="modal-actions">
-                        <button class="btn" @click="authMode === 'login' ? login() : register()">{{ authMode === 'login' ? '登录' : '注册' }}</button>
-                        <button class="btn green-outline" @click="authMode = authMode === 'login' ? 'register' : 'login'">{{ authMode === 'login' ? '去注册' : '去登录' }}</button>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <!-- 编辑个人信息按钮（登录后显示） -->
+        <button 
+          v-if="currentUser" 
+          class="btn green-outline profile-edit-btn" 
+          @click="toggleEditProfile"
+        >
+          {{ editingProfile ? '保存' : '编辑信息' }}
+        </button>
+      </div>
     </div>
+    
+    <!-- 个人主页下的快捷入口 -->
+    <div class="profile-actions">
+      <button class="btn green" @click="setView('all')">查看所有歌曲</button>
+      <button class="btn green" @click="setView('fav')">查看收藏</button>
+      <button class="btn green" @click="createPlaylist">创建新歌单</button>
+    </div>
+  </div>
+  
+  <!-- 个人主页默认显示收藏的歌曲 -->
+  <div class="profile-content">
+    <h3 class="profile-content-title">我喜欢的歌曲</h3>
+    <section class="playlist-table">
+      <table>
+        <thead>
+          <tr>
+            <th>歌曲名</th>
+            <th>时长</th>
+            <th>歌手/制作人</th>
+            <th>喜爱程度</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="({ s, i }, idx) in favSongs" :key="i" :class="{ active: currentIndex === i }" @dblclick="playSong(i)">
+            <td class="title-col">
+              <div class="title-with-play">
+                <button 
+                  class="play-icon-btn" 
+                  @click.stop="handlePlayButtonClick(i)" 
+                  :title="currentIndex === i && isPlaying ? '暂停' : '播放 ' + (s.name || '歌曲')"
+                  :disabled="!s.url || s.url === ''"
+                >
+                  {{ currentIndex === i && isPlaying ? '⏸' : '▶' }}
+                </button>
+                <span class="song-title-text">{{ s.name || '未知' }}</span>
+              </div>
+            </td>
+            <td class="time-col">{{ s.duration ? formatTime(s.duration) : '—' }}</td>
+            <td class="artist-col">{{ s.artist || '—' }}</td>
+            <td class="fav-col"><button :class="['fav-btn', { filled: s.fav }]" @click.stop="toggleFav(i)">{{ s.fav ? '❤' : '♡' }}</button></td>
+            <td class="action-col">
+              <div class="action-buttons">
+                <button 
+                  v-if="!s.url || s.url === ''" 
+                  class="icon-btn action-btn" 
+                  @click.stop="openUploadAudioModal(i)" 
+                  :title="'上传音频 ' + (s.name || '歌曲')"
+                >📤</button>
+                <button 
+                  class="icon-btn action-btn" 
+                  @click.stop="openUploadCoverModal(i)" 
+                  :title="'上传封面 ' + (s.name || '歌曲')"
+                >🖼️</button>
+                <button 
+                  class="icon-btn action-btn danger" 
+                  @click.stop="openSongDeleteConfirm(i)" 
+                  :title="'删除 ' + (s.name || '歌曲')"
+                >🗑</button>
+              </div>
+            </td>
+          </tr>
+          <tr v-if="favSongs.length === 0">
+            <td colspan="5" class="empty">暂无收藏的歌曲。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+  </div>
+</section>
+
+<!-- 头像上传输入（独立追加，放在原有 cover-ctrl 输入框下方） -->
+<input id="avatar-ctrl" ref="avatarInput" class="sr-only" type="file" accept="image/*" @change="handleAvatarUpload" />
+        <!-- 歌单详情区域 或 搜索结果区域 -->
+        <section class="playlist-detail" v-if="viewMode !== 'search'">
+          <div class="cover-and-title">
+            <div class="cover" :style="coverStyle" role="button" tabindex="0" @click="viewMode==='playlist' && editing ? openCoverDialog() : null" @keydown.enter="viewMode==='playlist' && editing ? openCoverDialog() : null">
+              <div class="cover-placeholder" v-if="!(viewMode === 'playlist' && selectedPlaylist && selectedPlaylist.cover)">
+                <!-- 默认美观图标（SVG） -->
+                <svg class="cover-default-icon" viewBox="0 0 64 64" role="img" aria-label="默认封面">
+                  <defs>
+                    <linearGradient id="coverGrad" x1="0" x2="1" y1="0" y2="1">
+                      <stop offset="0" stop-color="#e9f7f0" />
+                      <stop offset="1" stop-color="#dff7ef" />
+                    </linearGradient>
+                  </defs>
+                  <rect x="6" y="6" width="52" height="52" rx="8" fill="url(#coverGrad)" />
+                  <path d="M40 20v16a6 6 0 1 1-4-5.2V22l-10 3v12" fill="none" stroke="#2fb67d" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+              </div>
+              <!-- 编辑时显示覆盖操作 -->
+              <div class="cover-overlay" v-if="viewMode === 'playlist' && editing">
+                <button class="btn small" @click.stop="openCoverDialog">上传封面</button>
+                <button v-if="selectedPlaylist && selectedPlaylist.cover" class="btn small danger" @click.stop="removeCover">移除封面</button>
+              </div>
+            </div>
+            <h2 class="main-title" :class="{ 'playlist-title': viewMode === 'playlist' }">
+              <template v-if="editing && viewMode === 'playlist'">
+                <input class="plist-name-input" v-model="editName" />
+              </template>
+              <template v-else>
+                {{ currentTitle }}
+              </template>
+            </h2>
+          </div>
+          
+          <!-- 区分不同视图的布局结构 -->
+          <div class="meta" :class="{ 'collection-meta': viewMode === 'all' || viewMode === 'fav' }">
+            <!-- 歌单模式：先显示简介，再显示创建人 -->
+            <template v-if="viewMode === 'playlist'">
+              <!-- 非编辑状态：白底静态 label -->
+              <div v-if="!editing" class="desc-label">{{ selectedPlaylist ? selectedPlaylist.desc || '暂无简介' : '暂无简介' }}</div>
+              <!-- 编辑状态：可输入 textarea -->
+              <textarea v-else v-model="editDesc" class="desc" rows="4"></textarea>
+              <div class="creator">创建人：<strong>Name</strong></div>
+            </template>
+            
+            <!-- 单曲集合/我喜欢的：先显示创建人 -->
+            <template v-else>
+              <div class="creator" :class="{ 'collection-creator': viewMode === 'all' || viewMode === 'fav' }">创建人：<strong>Name</strong></div>
+            </template>
+            
+            <div class="meta-actions" :class="{ 'collection-actions': viewMode === 'all' || viewMode === 'fav' }">
+              <!-- 添加歌曲按钮（仅歌单模式） -->
+              <button v-if="viewMode === 'playlist'" class="btn green" :disabled="!selectedPlaylist" @click="openAddTrackModal">
+                ＋ 添加歌曲
+              </button>
+              <!-- 管理歌曲按钮（所有模式启用） -->
+              <button class="btn green-outline" @click="openManageSongs">管理歌曲</button>
+              <!-- 编辑内容按钮（仅歌单模式） -->
+              <button v-if="viewMode === 'playlist'" class="btn green-outline" :disabled="!selectedPlaylist" @click="toggleEditContent">{{ editing ? '保存' : '编辑内容' }}</button>
+              <button v-if="editing && selectedPlaylist" class="btn danger" @click="deleteConfirmOpen = true">删除歌单</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- 搜索结果区域 -->
+        <section class="search-results" v-if="viewMode === 'search'">
+          <h2 class="search-title">搜索结果</h2>
+          <p class="search-query" v-if="searchQuery">关键词：“{{ searchQuery }}”</p>
+        </section>
+
+        <!-- 歌曲表格 -->
+        <section class="playlist-table">
+          <table>
+            <thead>
+              <tr>
+                <th>歌曲名</th>
+                <th>时长</th>
+                <th>歌手/制作人</th>
+                <th>喜爱程度</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="({ s, i }, idx) in displayed" :key="i" :class="{ active: currentIndex === i }" @dblclick="playSong(i)">
+                <td class="title-col">
+                  <div class="title-with-play">
+                    <button 
+                      class="play-icon-btn" 
+                      @click.stop="handlePlayButtonClick(i)" 
+                      :title="currentIndex === i && isPlaying ? '暂停' : '播放 ' + (s.name || '歌曲')"
+                      :disabled="!s.url || s.url === ''"
+                    >
+                      {{ currentIndex === i && isPlaying ? '⏸' : '▶' }}
+                    </button>
+                    <span class="song-title-text">{{ s.name || '未知' }}</span>
+                  </div>
+                </td>
+                <td class="time-col">{{ s.duration ? formatTime(s.duration) : '—' }}</td>
+                <td class="artist-col">{{ s.artist || '—' }}</td>
+                <td class="fav-col"><button :class="['fav-btn', { filled: s.fav }]" @click.stop="toggleFav(i)">{{ s.fav ? '❤' : '♡' }}</button></td>
+                <td class="action-col">
+                  <div class="action-buttons">
+                    <button 
+                      v-if="!s.url || s.url === ''" 
+                      class="icon-btn action-btn" 
+                      @click.stop="openUploadAudioModal(i)" 
+                      :title="'上传音频 ' + (s.name || '歌曲')"
+                    >📤</button>
+                    <button 
+                      class="icon-btn action-btn" 
+                      @click.stop="openUploadCoverModal(i)" 
+                      :title="'上传封面 ' + (s.name || '歌曲')"
+                    >🖼️</button>
+                    <button 
+                      class="icon-btn action-btn danger" 
+                      @click.stop="openSongDeleteConfirm(i)" 
+                      :title="'删除 ' + (s.name || '歌曲')"
+                    >🗑</button>
+                  </div>
+                </td>
+              </tr>
+              <tr v-if="displayed.length === 0">
+                <td colspan="5" class="empty">暂无歌曲可显示。</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+      </main>
+    </div>
+
+    <!-- 底部播放器控制栏 -->
+    <footer class="bottom-bar">
+      <div class="player-controls">
+        <button class="icon-btn prev-btn" @click="playPrev">◀◀</button>
+        <button class="play-btn" :class="{ playing: isPlaying }" @click="togglePlay">{{ isPlaying ? '暂停' : '播放' }}</button>
+        <!-- 优化爱心按钮的边界校验逻辑 -->
+        <button 
+          class="icon-btn fav-toggle" 
+          :class="{ filled: songList[currentIndex]?.fav }" 
+          @click="toggleCurrentFav" 
+          :disabled="currentIndex === -1" 
+          :title="songList[currentIndex]?.fav ? '取消喜欢' : '添加到我喜欢'"
+        >
+          {{ songList[currentIndex]?.fav ? '❤' : '♡' }}
+        </button>
+        <button class="icon-btn next-btn" @click="playNext">▶▶</button>
+      </div>
+
+      <div class="player-progress">
+        <input class="range-progress" type="range" min="0" :max="audioDuration || 100" v-model="currentTime" @input="seekAudio" />
+        <div class="time-row">
+          <span class="current-time">{{ formatTime(currentTime) }}</span>
+          <span class="sep">/</span>
+          <span class="duration">{{ formatTime(audioDuration) }}</span>
+        </div>
+      </div>
+
+      <div class="player-extra">
+        <button class="icon-btn" @click="cyclePlayMode" :title="playModeTitle">{{ playModeIcon }}</button>
+        <!-- 音量控制容器 - 修改触发逻辑 -->
+        <div class="vol-container" 
+             @mouseenter="handleVolMouseEnter" 
+             @mouseleave="handleVolMouseLeave">
+          <button class="icon-btn" @click="toggleMute" :title="isMuted ? '已静音' : '静音 / 音量'">{{ speakerIcon }}</button>
+          <!-- 音量滑块 - 仅鼠标悬浮时显示 -->
+          <div class="vol-popup" v-show="showVolSlider">
+            <input class="range vol-vertical" type="range" min="0" max="1" step="0.01" v-model="audioVolume" @input="changeVolume" />
+          </div>
+        </div>
+      </div>
+    </footer>
+
+    <!-- 管理歌曲模态 -->
+    <div v-if="manageModalOpen" class="modal-overlay" @click.self="closeManageSongs">
+      <div class="modal">
+        <h3>从单曲集合选择歌曲</h3>
+        <div class="modal-list">
+          <div v-if="!songList.length" class="empty">当前没有可供选择的歌曲。</div>
+          <div v-for="(s, i) in songList" :key="i" class="modal-row">
+            <label>
+              <input type="checkbox" :checked="manageSelection.has(i)" @change="toggleSongInManage(i)" />
+              {{ s.name }} <span class="muted">{{ s.duration ? '(' + formatTime(s.duration) + ')' : '' }}</span>
+            </label>
+            <!-- 管理歌曲时可直接操作喜爱和删除 -->
+            <button :class="['fav-btn', { filled: s.fav }]" @click.stop="toggleFav(i)" style="margin-left:8px;">{{ s.fav ? '❤' : '♡' }}</button>
+            <button class="icon-btn" @click.stop="openSongDeleteConfirm(i)" title="删除" style="margin-left:6px;">🗑</button>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn" @click="closeManageSongs">取消</button>
+          <button class="btn btn-primary" @click="saveManageSongs">保存</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 单曲删除确认弹窗 -->
+    <div v-if="songDeleteConfirmOpen" class="modal-overlay" @click.self="songDeleteConfirmOpen = false">
+      <div class="modal">
+        <h3>确认删除歌曲？</h3>
+        <p class="muted">删除后将从所有歌单中移除，且无法恢复</p>
+        <div class="modal-actions">
+          <button class="btn green-outline" @click="songDeleteConfirmOpen = false">取消</button>
+          <button class="btn danger" @click="confirmDeleteSong">确认删除</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 歌单删除确认弹窗 -->
+    <div v-if="deleteConfirmOpen" class="modal-overlay" @click.self="deleteConfirmOpen = false">
+      <div class="modal">
+        <h3>确认删除歌单？</h3>
+        <p class="muted">
+          确定要删除歌单"<strong>{{ deletingPlaylistId ? playlists.find(p => p.id === deletingPlaylistId)?.name : selectedPlaylist?.name || '' }}</strong>"吗？
+        </p>
+        <p class="muted" style="font-size: 0.85rem; margin-top: 0.5rem;">删除后歌单内歌曲不会从单曲集合中移除</p>
+        <div class="modal-actions">
+          <button class="btn green-outline" @click="deleteConfirmOpen = false">取消</button>
+          <button class="btn danger" @click="confirmDeletePlaylist">确认删除</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 隐藏上传输入，保留可访问性 -->
+    <input id="file-ctrl" ref="fileInput" class="sr-only" type="file" accept=".mp3,.wav" multiple @change="handleFileUpload" />
+    <input id="cover-ctrl" ref="coverInput" class="sr-only" type="file" accept="image/*" @change="handleCoverUpload" />
+
+    <!-- 修改歌单名称模态 -->
+    <div v-if="editPlaylistNameModalOpen" class="modal-overlay" @click.self="closeEditPlaylistNameModal">
+      <div class="modal edit-playlist-name-modal">
+        <h3>修改歌单名称</h3>
+        <div class="edit-playlist-name-form">
+          <label class="form-row">
+            <span class="form-label">歌单名称 <span class="required">*</span></span>
+            <input 
+              ref="editPlaylistNameInput" 
+              v-model="editPlaylistNameForm.name" 
+              placeholder="请输入歌单名称" 
+              maxlength="50"
+              @keydown.enter="confirmEditPlaylistName"
+            />
+            <div class="form-error" v-if="editPlaylistNameError.name">{{ editPlaylistNameError.name }}</div>
+          </label>
+          <div class="form-error" v-if="editPlaylistNameError.general">{{ editPlaylistNameError.general }}</div>
+          <div class="modal-actions">
+            <button class="btn green-outline" @click="closeEditPlaylistNameModal" :disabled="editingPlaylistName">取消</button>
+            <button class="btn green" @click="confirmEditPlaylistName" :disabled="editingPlaylistName">
+              <span v-if="editingPlaylistName">保存中...</span>
+              <span v-else>保存</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 上传封面模态 -->
+    <div v-if="uploadCoverModalOpen" class="modal-overlay" @click.self="closeUploadCoverModal">
+      <div class="modal upload-cover-modal">
+        <h3>上传封面图片</h3>
+        <div class="upload-cover-form">
+          <div class="form-section">
+            <h4 class="form-section-title">歌曲信息</h4>
+            <div class="song-info-display">
+              <div class="info-item">
+                <span class="info-label">歌曲名称：</span>
+                <span class="info-value">{{ uploadCoverSong?.name || '未知' }}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">歌手：</span>
+                <span class="info-value">{{ uploadCoverSong?.artist || '未知' }}</span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="form-section">
+            <h4 class="form-section-title">封面图片</h4>
+            <div class="file-upload-area">
+              <input 
+                ref="uploadCoverFileInput" 
+                type="file" 
+                accept="image/*" 
+                @change="handleUploadCoverFileSelect"
+                class="sr-only"
+                id="upload-cover-file-input"
+              />
+              <div v-if="!uploadCoverForm.file" class="file-upload-placeholder" @click="openUploadCoverFileDialog">
+                <span class="upload-icon">🖼️</span>
+                <span>点击选择封面图片</span>
+                <span class="upload-hint">支持 JPG、PNG、GIF 等图片格式</span>
+              </div>
+              <div v-else class="file-upload-selected">
+                <div class="file-info">
+                  <img :src="uploadCoverForm.preview" alt="封面预览" class="cover-preview-large" />
+                  <div class="file-details">
+                    <div class="file-name">{{ uploadCoverForm.file.name }}</div>
+                    <div class="file-size">{{ formatFileSize(uploadCoverForm.file.size) }}</div>
+                  </div>
+                </div>
+                <button class="btn small" @click="removeUploadCoverFile">移除</button>
+              </div>
+            </div>
+          </div>
+          
+          <div class="form-error" v-if="uploadCoverError">{{ uploadCoverError }}</div>
+          <div class="modal-actions">
+            <button class="btn green-outline" @click="closeUploadCoverModal" :disabled="uploadingCover">取消</button>
+            <button class="btn green" @click="confirmUploadCover" :disabled="uploadingCover || !uploadCoverForm.file">
+              <span v-if="uploadingCover">上传中...</span>
+              <span v-else>上传封面</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 上传音频模态 -->
+    <div v-if="uploadAudioModalOpen" class="modal-overlay" @click.self="closeUploadAudioModal">
+      <div class="modal upload-audio-modal">
+        <h3>上传音频文件</h3>
+        <div class="upload-audio-form">
+          <div class="form-section">
+            <h4 class="form-section-title">歌曲信息</h4>
+            <div class="song-info-display">
+              <div class="info-item">
+                <span class="info-label">歌曲名称：</span>
+                <span class="info-value">{{ uploadAudioSong?.name || '未知' }}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">歌手：</span>
+                <span class="info-value">{{ uploadAudioSong?.artist || '未知' }}</span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="form-section">
+            <h4 class="form-section-title">音频文件</h4>
+            <div class="file-upload-area">
+              <input 
+                ref="uploadAudioFileInput" 
+                type="file" 
+                accept="audio/*,.mp3,.wav" 
+                @change="handleUploadAudioFileSelect"
+                class="sr-only"
+                id="upload-audio-file-input"
+              />
+              <div v-if="!uploadAudioForm.file" class="file-upload-placeholder" @click="openUploadAudioFileDialog">
+                <span class="upload-icon">📁</span>
+                <span>点击选择音频文件</span>
+                <span class="upload-hint">支持 MP3、WAV 格式</span>
+              </div>
+              <div v-else class="file-upload-selected">
+                <div class="file-info">
+                  <span class="file-icon">🎵</span>
+                  <div class="file-details">
+                    <div class="file-name">{{ uploadAudioForm.file.name }}</div>
+                    <div class="file-size">{{ formatFileSize(uploadAudioForm.file.size) }}</div>
+                  </div>
+                </div>
+                <button class="btn small" @click="removeUploadAudioFile">移除</button>
+              </div>
+            </div>
+          </div>
+          
+          <div class="form-error" v-if="uploadAudioError">{{ uploadAudioError }}</div>
+          <div class="modal-actions">
+            <button class="btn green-outline" @click="closeUploadAudioModal" :disabled="uploadingAudio">取消</button>
+            <button class="btn green" @click="confirmUploadAudio" :disabled="uploadingAudio || !uploadAudioForm.file">
+              <span v-if="uploadingAudio">上传中...</span>
+              <span v-else>上传音频</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 添加歌曲模态 -->
+    <div v-if="addTrackModalOpen" class="modal-overlay" @click.self="closeAddTrackModal">
+      <div class="modal add-track-modal">
+        <h3>添加歌曲</h3>
+        <div class="add-track-form">
+          <div class="form-section">
+            <h4 class="form-section-title">歌曲信息</h4>
+            <label class="form-row">
+              <span class="form-label">歌曲名称 <span class="required">*</span></span>
+              <input 
+                ref="trackTitleInput" 
+                v-model="newTrackForm.title" 
+                placeholder="请输入歌曲名称" 
+                maxlength="100"
+                @keydown.enter="confirmAddTrack"
+              />
+              <div class="form-error" v-if="addTrackError.title">{{ addTrackError.title }}</div>
+            </label>
+            <label class="form-row">
+              <span class="form-label">歌手 <span class="required">*</span></span>
+              <input 
+                v-model="newTrackForm.artist" 
+                placeholder="请输入歌手名称" 
+                maxlength="50"
+                @keydown.enter="confirmAddTrack"
+              />
+              <div class="form-error" v-if="addTrackError.artist">{{ addTrackError.artist }}</div>
+            </label>
+            <label class="form-row">
+              <span class="form-label">专辑</span>
+              <input 
+                v-model="newTrackForm.album" 
+                placeholder="请输入专辑名称（可选）" 
+                maxlength="50"
+              />
+            </label>
+          </div>
+          
+          <div class="form-section">
+            <h4 class="form-section-title">音频文件</h4>
+            <div class="file-upload-area">
+              <input 
+                ref="trackFileInput" 
+                type="file" 
+                accept="audio/*,.mp3,.wav" 
+                @change="handleTrackFileSelect"
+                class="sr-only"
+                id="track-file-input"
+              />
+              <div v-if="!newTrackForm.file" class="file-upload-placeholder" @click="openTrackFileDialog">
+                <span class="upload-icon">📁</span>
+                <span>点击选择音频文件（可选）</span>
+                <span class="upload-hint">支持 MP3、WAV 格式</span>
+              </div>
+              <div v-else class="file-upload-selected">
+                <div class="file-info">
+                  <span class="file-icon">🎵</span>
+                  <div class="file-details">
+                    <div class="file-name">{{ newTrackForm.file.name }}</div>
+                    <div class="file-size">{{ formatFileSize(newTrackForm.file.size) }}</div>
+                  </div>
+                </div>
+                <button class="btn small" @click="removeTrackFile">移除</button>
+              </div>
+            </div>
+          </div>
+          
+          <div class="form-section">
+            <h4 class="form-section-title">封面图片（可选）</h4>
+            <div class="file-upload-area">
+              <input 
+                ref="trackCoverInput" 
+                type="file" 
+                accept="image/*" 
+                @change="handleTrackCoverSelect"
+                class="sr-only"
+                id="track-cover-input"
+              />
+              <div v-if="!newTrackForm.coverFile" class="file-upload-placeholder" @click="openTrackCoverDialog">
+                <span class="upload-icon">🖼️</span>
+                <span>点击选择封面图片（可选）</span>
+              </div>
+              <div v-else class="file-upload-selected">
+                <div class="file-info">
+                  <img :src="newTrackForm.coverPreview" alt="封面预览" class="cover-preview" />
+                  <div class="file-details">
+                    <div class="file-name">{{ newTrackForm.coverFile.name }}</div>
+                  </div>
+                </div>
+                <button class="btn small" @click="removeTrackCover">移除</button>
+              </div>
+            </div>
+          </div>
+          
+          <div class="form-error" v-if="addTrackError.general">{{ addTrackError.general }}</div>
+          <div class="modal-actions">
+            <button class="btn green-outline" @click="closeAddTrackModal" :disabled="addingTrack">取消</button>
+            <button class="btn green" @click="confirmAddTrack" :disabled="addingTrack">
+              <span v-if="addingTrack">添加中...</span>
+              <span v-else>添加歌曲</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 创建歌单模态 -->
+    <div v-if="createPlaylistModalOpen" class="modal-overlay" @click.self="closeCreatePlaylistModal">
+      <div class="modal create-playlist-modal">
+        <h3>创建新歌单</h3>
+        <div class="create-playlist-form">
+          <label class="form-row">
+            <span class="form-label">歌单名称 <span class="required">*</span></span>
+            <input 
+              ref="playlistNameInput" 
+              v-model="newPlaylistForm.name" 
+              placeholder="请输入歌单名称" 
+              maxlength="50"
+              @keydown.enter="confirmCreatePlaylist"
+            />
+            <div class="form-error" v-if="createPlaylistError.name">{{ createPlaylistError.name }}</div>
+          </label>
+          <label class="form-row">
+            <span class="form-label">歌单描述</span>
+            <textarea 
+              v-model="newPlaylistForm.desc" 
+              placeholder="请输入歌单描述（可选）" 
+              rows="3"
+              maxlength="200"
+            ></textarea>
+          </label>
+          <div class="form-error" v-if="createPlaylistError.general">{{ createPlaylistError.general }}</div>
+          <div class="modal-actions">
+            <button class="btn green-outline" @click="closeCreatePlaylistModal" :disabled="creatingPlaylist">取消</button>
+            <button class="btn green" @click="confirmCreatePlaylist" :disabled="creatingPlaylist">
+              <span v-if="creatingPlaylist">创建中...</span>
+              <span v-else>创建</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 登录 / 注册 模态（全局唯一，开屏/内部共用 ✅ 核心统一） -->
+    <div v-if="authModalOpen" class="modal-overlay" @click.self="closeAuth">
+      <div class="modal auth-modal">
+        <h3>{{ authMode === 'login' ? '登录' : '注册' }}</h3>
+        <div class="auth-form">
+          <template v-if="authMode === 'register'">
+            <label class="auth-row">用户名 <input v-model="authForm.username" placeholder="用户名" /></label>
+          </template>
+          <label class="auth-row">邮箱 <input ref="authEmailInput" v-model="authForm.email" placeholder="邮箱" /></label>
+          <label class="auth-row">密码 <input type="password" v-model="authForm.password" placeholder="密码" /></label>
+          <div class="auth-error" v-if="authError">{{ authError }}</div>
+          <div class="modal-actions">
+            <button class="btn" @click="authMode === 'login' ? login() : register()">{{ authMode === 'login' ? '登录' : '注册' }}</button>
+            <button class="btn green-outline" @click="authMode = authMode === 'login' ? 'register' : 'login'">{{ authMode === 'login' ? '去注册' : '去登录' }}</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup>
@@ -917,18 +758,6 @@ onMounted(() => {
 // 基本播放数据
 const songList = ref([])
 const currentIndex = ref(-1)
-
-// 当前播放歌曲
-const currentSong = computed(() => {
-  if (currentIndex.value < 0 || currentIndex.value >= songList.value.length) {
-    return null
-  }
-  return songList.value[currentIndex.value]
-})
-
-// 默认封面
-const defaultCover = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 24 24' fill='none' stroke='%2360a5fa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'%3E%3C/circle%3E%3Cpath d='M9 9v6l5-3z'%3E%3C/path%3E%3C/svg%3E"
-
 const isPlaying = ref(false)
 const audio = ref(new Audio())
 const audioDuration = ref(0)
@@ -938,13 +767,6 @@ const isMuted = ref(false)
 const prevVolume = ref(audioVolume.value)
 // 音量滑块显示控制
 const showVolSlider = ref(false)
-// 歌词面板显示控制
-const showDetail = ref(false)
-
-// 切换歌词面板显示
-const toggleDetail = () => {
-  showDetail.value = !showDetail.value
-}
 // 悬浮延迟定时器
 let volHoverTimer = null
 
@@ -990,10 +812,7 @@ onMounted(() => {
     audioDuration.value = audio.value.duration
   }
   audio.value.ontimeupdate = () => {
-    if (!audio.value.seeking) {
-      currentTime.value = audio.value.currentTime
-      updateActiveLrcIndex() // 更新当前歌词索引
-    }
+    if (!audio.value.seeking) currentTime.value = audio.value.currentTime
   }
   audio.value.onended = () => {
     if (playMode.value === 'repeat-one') {
@@ -1067,7 +886,7 @@ const coverStyle = computed(() => {
   if (viewMode.value === 'playlist' && selectedPlaylist.value && selectedPlaylist.value.cover) {
     return { backgroundImage: `url(${selectedPlaylist.value.cover})`, backgroundSize: 'cover', backgroundPosition: 'center' }
   }
-  return { backgroundImage: 'linear-gradient(90deg,var(--bg-secondary),var(--bg-tertiary))' }
+  return { backgroundImage: 'linear-gradient(90deg,#e9f7f0,#f7fff9)' }
 })
 
 const openCoverDialog = () => {
@@ -1218,9 +1037,8 @@ const logout = async () => {
 
 // 视图控制
 const viewMode = ref('all')
-const showProfileModal = ref(false)
-const setView = (mode) => {
-  viewMode.value = mode
+const setView = (mode) => { 
+  viewMode.value = mode 
   if (mode === 'all' || mode === 'fav') {
     selectedPlaylistId.value = null
   }
@@ -2293,104 +2111,6 @@ const displayed = computed(() => {
   return arr
 })
 
-// 歌词解析相关
-const parsedLrc = ref([])
-const activeLrcIndex = ref(-1)
-const lrcList = ref(null)
-
-// 解析LRC格式歌词
-const parseLrc = (lrcText) => {
-  if (!lrcText) return []
-  
-  const lrcLines = lrcText.split('\n')
-  const lrcArray = []
-  
-  // 支持两种时间格式：[mm:ss.xx] 和 [mm:ss.xxx]
-  const timeRegex = /\[(\d{2}):(\d{2})\.(\d{2,3})\]/g
-  
-  lrcLines.forEach(line => {
-    const timeMatches = [...line.matchAll(timeRegex)]
-    if (timeMatches.length === 0) return
-    
-    // 提取歌词文本
-    const text = line.replace(timeRegex, '').trim()
-    if (!text) return
-    
-    // 提取所有时间标签
-    timeMatches.forEach(match => {
-      const minutes = parseInt(match[1])
-      const seconds = parseInt(match[2])
-      const milliseconds = parseInt(match[3]) * (match[3].length === 2 ? 10 : 1) // 处理两位数和三位数的毫秒
-      const totalSeconds = minutes * 60 + seconds + milliseconds / 1000
-      
-      lrcArray.push({
-        time: totalSeconds,
-        text: text
-      })
-    })
-  })
-  
-  // 按时间排序
-  return lrcArray.sort((a, b) => a.time - b.time)
-}
-
-// 获取歌曲歌词
-const fetchLyrics = async (songId) => {
-  if (!songId) {
-    parsedLrc.value = []
-    return
-  }
-  
-  try {
-    const data = await api.getLyrics(songId)
-    if (data.code === 200) {
-      parsedLrc.value = parseLrc(data.data)
-    } else {
-      console.warn('获取歌词失败:', data.msg)
-      parsedLrc.value = []
-    }
-  } catch (err) {
-    console.error('获取歌词网络错误:', err)
-    parsedLrc.value = []
-  }
-}
-
-// 歌词滚动定位
-const scrollToActiveLyric = () => {
-  if (!lrcList.value || activeLrcIndex.value === -1) return
-  
-  const activeLine = lrcList.value.children[activeLrcIndex.value]
-  if (!activeLine) return
-  
-  const containerHeight = lrcList.value.clientHeight
-  const lineHeight = activeLine.clientHeight
-  const scrollTop = activeLine.offsetTop - containerHeight / 2 + lineHeight / 2
-  
-  lrcList.value.scrollTo({
-    top: scrollTop,
-    behavior: 'smooth'
-  })
-}
-
-// 更新当前歌词索引
-const updateActiveLrcIndex = () => {
-  if (!parsedLrc.value.length) {
-    activeLrcIndex.value = -1
-    return
-  }
-  
-  const currentTime = audio.value.currentTime
-  for (let i = parsedLrc.value.length - 1; i >= 0; i--) {
-    if (currentTime >= parsedLrc.value[i].time) {
-      if (activeLrcIndex.value !== i) {
-        activeLrcIndex.value = i
-        scrollToActiveLyric()
-      }
-      break
-    }
-  }
-}
-
 // 播放控制相关
 const playSong = (i) => {
   if (!songList.value.length || i < 0 || i >= songList.value.length) return
@@ -2403,10 +2123,6 @@ const playSong = (i) => {
   audio.value.src = song.url
   currentTime.value = 0
   audioDuration.value = 0
-  
-  // 加载歌词
-  fetchLyrics(song.id)
-  
   audio.value.play().then(() => isPlaying.value = true).catch((err) => {
     isPlaying.value = false
     console.error('播放失败:', err)
