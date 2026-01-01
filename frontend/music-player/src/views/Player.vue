@@ -485,67 +485,100 @@ import { api } from '../api.js'
                 <div class="detail-mask" @click="showDetail = false"></div>
 
                 <div class="detail-content">
-                    <!-- 顶部：封面 + 信息 + 歌词 -->
+                    <!-- 右上角退出按钮 -->
+                    <button class="exit-btn" @click="showDetail = false">×</button>
+                    <!-- 顶部：左侧歌单列表 + 右侧歌曲信息和歌词 -->
                     <div class="detail-top">
-                        <!-- 左侧：封面 + 信息 -->
-                        <aside class="detail-left">
+                        <!-- 左侧：单曲所在的歌单 -->
+                        <aside class="detail-left playlist-panel">
+                            <div class="playlist-header">
+                                <h3>播放队列</h3>
+                                <span class="playlist-source">来源: {{ currentTitle }}</span>
+                            </div>
+                            <ul class="playlist-songs">
+                                <li v-for="({ s, i }, idx) in displayed" 
+                                    :key="i" 
+                                    :class="{ active: currentIndex === i }" 
+                                    @click="playSong(i)"
+                                    class="playlist-song-item">
+                                    <div class="song-number">{{ idx + 1 }}</div>
+                                    <div class="song-info">
+                                        <div class="song-name">{{ s.name || '未知' }}</div>
+                                        <div class="song-artist">{{ s.artist || '未知' }}</div>
+                                    </div>
+                                    <div class="song-duration">{{ s.duration ? formatTime(s.duration) : '—' }}</div>
+                                </li>
+                            </ul>
+                        </aside>
+
+                        <!-- 右侧：歌曲信息和滚动歌词 -->
+                        <main class="detail-right">
+                            <!-- 歌曲信息 -->
+                            <div class="song-info-header">
+                                <h2 class="song-title">{{ currentSong?.name || '未知歌曲' }}</h2>
+                                <p class="song-artist">{{ currentSong?.artist || '未知歌手' }}</p>
+                            </div>
+                            <!-- 滚动歌词 -->
+                            <div class="lyrics-container">
+                                <ul ref="lrcList" class="lrc-list">
+                                    <li v-for="(line, idx) in parsedLrc"
+                                        :key="idx"
+                                        :class="{ active: idx === activeLrcIndex }">
+                                        {{ line.text }}
+                                    </li>
+                                </ul>
+                            </div>
+                        </main>
+                    </div>
+
+                    <!-- 内置播放器控制栏 -->
+                    <footer class="bottom-bar built-in" @click.self="showDetail = false">
+                        <!-- 左侧：单曲封面 -->
+                        <div class="player-cover">
                             <img class="cover"
                                  :src="currentSong?.coverUrl || defaultCover"
                                  alt="cover" />
-                            <h2 class="title">{{ currentSong?.name || '未知歌曲' }}</h2>
-                            <p class="artist">{{ currentSong?.artist || '未知歌手' }}</p>
-                            <p class="album">{{ currentSong?.album || '未知专辑' }}</p>
-                        </aside>
-
-                        <!-- 右侧：滚动歌词 -->
-                        <main class="detail-right">
-                            <ul ref="lrcList" class="lrc-list">
-                                <li v-for="(line, idx) in parsedLrc"
-                                    :key="idx"
-                                    :class="{ active: idx === activeLrcIndex }">
-                                    {{ line.text }}
-                                </li>
-                            </ul>
-                        </main>
-        </div>
-
-            <!-- 内置播放器控制栏 -->
-            <footer class="bottom-bar built-in" @click.self="showDetail = false">
-                <div class="player-controls">
-                    <button class="icon-btn prev-btn" @click="playPrev">◀◀</button>
-                    <button class="play-btn" :class="{ playing: isPlaying }" @click="togglePlay">{{ isPlaying ? '暂停' : '播放' }}</button>
-                    <button class="icon-btn fav-toggle"
-                            :class="{ filled: songList[currentIndex]?.fav }"
-                            @click="toggleCurrentFav"
-                            :disabled="currentIndex === -1"
-                            :title="songList[currentIndex]?.fav ? '取消喜欢' : '添加到我喜欢'">
-                        {{ songList[currentIndex]?.fav ? '❤' : '♡' }}
-                    </button>
-                    <button class="icon-btn next-btn" @click="playNext">▶▶</button>
-                </div>
-
-                <div class="player-progress">
-                    <input class="range-progress" type="range" min="0" :max="audioDuration || 100" v-model="currentTime" @input="seekAudio" />
-                    <div class="time-row">
-                        <span class="current-time">{{ formatTime(currentTime) }}</span>
-                        <span class="sep">/</span>
-                        <span class="duration">{{ formatTime(audioDuration) }}</span>
-                    </div>
-                </div>
-
-                <div class="player-extra">
-                    <button class="icon-btn" @click="cyclePlayMode" :title="playModeTitle">{{ playModeIcon }}</button>
-                    <div class="vol-container"
-                         @mouseenter="handleVolMouseEnter"
-                         @mouseleave="handleVolMouseLeave">
-                        <button class="icon-btn" @click="toggleMute" :title="isMuted ? '已静音' : '静音 / 音量'">{{ speakerIcon }}</button>
-                        <div class="vol-popup" v-show="showVolSlider">
-                            <input class="range vol-vertical" type="range" min="0" max="1" step="0.01" v-model="audioVolume" @input="changeVolume" />
                         </div>
-                    </div>
+                        
+                        <!-- 中间：播放控制和进度条 -->
+                        <div class="player-controls-area">
+                            <div class="player-controls">
+                                <button class="icon-btn prev-btn" @click="playPrev">◀◀</button>
+                                <button class="play-btn" :class="{ playing: isPlaying }" @click="togglePlay">{{ isPlaying ? '暂停' : '播放' }}</button>
+                                <button class="icon-btn fav-toggle"
+                                        :class="{ filled: songList[currentIndex]?.fav }"
+                                        @click="toggleCurrentFav"
+                                        :disabled="currentIndex === -1"
+                                        :title="songList[currentIndex]?.fav ? '取消喜欢' : '添加到我喜欢'">
+                                    {{ songList[currentIndex]?.fav ? '❤' : '♡' }}
+                                </button>
+                                <button class="icon-btn next-btn" @click="playNext">▶▶</button>
+                            </div>
+
+                            <div class="player-progress">
+                                <input class="range-progress" type="range" min="0" :max="audioDuration || 100" v-model="currentTime" @input="seekAudio" />
+                                <div class="time-row">
+                                    <span class="current-time">{{ formatTime(currentTime) }}</span>
+                                    <span class="sep">/</span>
+                                    <span class="duration">{{ formatTime(audioDuration) }}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 右侧：播放模式和音量控制 -->
+                        <div class="player-extra">
+                            <button class="icon-btn" @click="cyclePlayMode" :title="playModeTitle">{{ playModeIcon }}</button>
+                            <div class="vol-container"
+                                 @mouseenter="handleVolMouseEnter"
+                                 @mouseleave="handleVolMouseLeave">
+                                <button class="icon-btn" @click="toggleMute" :title="isMuted ? '已静音' : '静音 / 音量'"> {{ speakerIcon }}</button>
+                                <div class="vol-popup" v-show="showVolSlider">
+                                    <input class="range vol-vertical" type="range" min="0" max="1" step="0.01" v-model="audioVolume" @input="changeVolume" />
+                                </div>
+                            </div>
+                        </div>
+                    </footer>
                 </div>
-            </footer>
-        </div>
             </section>
         </transition>
 
