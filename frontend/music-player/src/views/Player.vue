@@ -739,10 +739,32 @@ import { api } from '../api.js'
         <h3>{{ authMode === 'login' ? '登录' : '注册' }}</h3>
         <div class="auth-form">
           <template v-if="authMode === 'register'">
-            <label class="auth-row">用户名 <input v-model="authForm.username" placeholder="用户名" /></label>
+            <label class="auth-row">用户名
+              <input
+                ref="authUsernameInput"
+                v-model="authForm.username"
+                placeholder="用户名"
+                @keydown.enter="handleAuthInputEnter('username')"
+              />
+            </label>
           </template>
-          <label class="auth-row">邮箱 <input ref="authEmailInput" v-model="authForm.email" placeholder="邮箱" /></label>
-          <label class="auth-row">密码 <input type="password" v-model="authForm.password" placeholder="密码" /></label>
+          <label class="auth-row">邮箱
+            <input
+              ref="authEmailInput"
+              v-model="authForm.email"
+              placeholder="邮箱"
+              @keydown.enter="handleAuthInputEnter('email')"
+            />
+          </label>
+          <label class="auth-row">密码
+            <input
+              ref="authPwdInput"
+              type="password"
+              v-model="authForm.password"
+              placeholder="密码"
+              @keydown.enter="handleAuthInputEnter('password')"
+            />
+          </label>
           <div class="auth-error" v-if="authError">{{ authError }}</div>
           <div class="modal-actions">
             <button class="btn" @click="authMode === 'login' ? login() : register()">{{ authMode === 'login' ? '登录' : '注册' }}</button>
@@ -946,8 +968,10 @@ const authModalOpen = ref(false)
 const authMode = ref('login')
 const authForm = ref({ username: '', email: '', password: '' })
 const authError = ref('')
-// 聚焦引用：打开登录时自动聚焦到邮箱输入框
+// 聚焦引用：打开登录时自动聚焦到邮箱输入框 + 新增用户名、密码输入框ref
+const authUsernameInput = ref(null)
 const authEmailInput = ref(null)
+const authPwdInput = ref(null)
 const currentUser = ref(null)
 const token = ref(localStorage.getItem('token') || '')
 
@@ -957,16 +981,43 @@ const openAuth = (mode) => {
   authForm.value = { username: '', email: '', password: '' }
   authError.value = ''
   authModalOpen.value = true
-  // 打开后自动聚焦到邮箱输入
+  // 打开后自动聚焦到对应输入框
   nextTick(() => {
-    try { authEmailInput.value && authEmailInput.value.focus() } catch (e) {}
+    try {
+      if(mode === 'register') {
+        authUsernameInput.value && authUsernameInput.value.focus()
+      } else {
+        authEmailInput.value && authEmailInput.value.focus()
+      }
+    } catch (e) {}
   })
 }
 const closeAuth = () => {
   authModalOpen.value = false
 }
 
-const router = useRouter()  
+// ✅ 核心新增：登录/注册回车聚焦+提交逻辑
+const handleAuthInputEnter = (inputType) => {
+  if(authMode.value === 'register') {
+    // 注册模式：用户名 → 邮箱 → 密码 → 提交
+    if(inputType === 'username') {
+      authEmailInput.value?.focus()
+    } else if(inputType === 'email') {
+      authPwdInput.value?.focus()
+    } else if(inputType === 'password') {
+      register()
+    }
+  } else {
+    // 登录模式：邮箱 → 密码 → 提交
+    if(inputType === 'email') {
+      authPwdInput.value?.focus()
+    } else if(inputType === 'password') {
+      login()
+    }
+  }
+}
+
+const router = useRouter()
 
 const setToken = (t) => {
   token.value = t
@@ -1123,12 +1174,21 @@ const handleFileUpload = async (e) => {
     }
   }
 
+  // === 新增：弹出输入歌曲名和歌手名的模态框 ===
+  const userInput = await showSongInfoModal(files[0].name)
+  if (!userInput) {
+    // 用户点击了“取消上传”
+    return
+  }
+  // userInput = { title, artist }
+
   // 上传文件到选中的歌单
   for (const file of files) {
     if (!['audio/mpeg', 'audio/wav', 'audio/mp3'].includes(file.type)) continue
 
-    const title = file.name.replace(/\.(mp3|wav)$/i, '')
-    const artist = '未知'
+    // 使用用户输入的标题和歌手（若为空则回退到默认）
+    let title = userInput.title.trim() === '' ? file.name.replace(/\.(mp3|wav)$/i, '') : userInput.title.trim()
+    let artist = userInput.artist.trim() === '' ? '未知' : userInput.artist.trim()
 
     try {
       // 使用接口11：向歌单添加歌曲
@@ -1196,6 +1256,120 @@ const loadPlaylistTracks = async (playlistId) => {
   } catch (err) {
     console.error('加载歌单歌曲失败:', err)
   }
+}
+
+function showSongInfoModal(filename) {
+  return new Promise((resolve) => {
+    // 创建遮罩层
+    const overlay = document.createElement('div')
+    overlay.style.position = 'fixed'
+    overlay.style.top = '0'
+    overlay.style.left = '0'
+    overlay.style.width = '100vw'
+    overlay.style.height = '100vh'
+    overlay.style.backgroundColor = 'rgba(0,0,0,0.5)'
+    overlay.style.display = 'flex'
+    overlay.style.justifyContent = 'center'
+    overlay.style.alignItems = 'center'
+    overlay.style.zIndex = '10000'
+
+    // 创建模态框内容
+    const modal = document.createElement('div')
+    modal.style.backgroundColor = '#fff'
+    modal.style.padding = '24px'
+    modal.style.borderRadius = '8px'
+    modal.style.minWidth = '300px'
+    modal.style.boxShadow = '0 4px 12px rgba(0,0,0,0.3)'
+
+    const titleEl = document.createElement('h3')
+    titleEl.textContent = '请输入歌曲信息'
+    titleEl.style.marginTop = '0'
+    titleEl.style.marginBottom = '16px'
+
+    // 歌曲名输入框
+    const titleLabel = document.createElement('label')
+    titleLabel.textContent = '歌曲名：'
+    titleLabel.style.display = 'block'
+    titleLabel.style.marginBottom = '4px'
+    const titleInput = document.createElement('input')
+    titleInput.type = 'text'
+    titleInput.placeholder = '若为空白字符则取文件名为默认单曲名字'
+    titleInput.value = filename.replace(/\.(mp3|wav)$/i, '')
+    titleInput.style.width = '100%'
+    titleInput.style.padding = '8px'
+    titleInput.style.marginBottom = '16px'
+    titleInput.style.border = '1px solid #ccc'
+    titleInput.style.borderRadius = '4px'
+
+    // 歌手名输入框
+    const artistLabel = document.createElement('label')
+    artistLabel.textContent = '歌手名：'
+    artistLabel.style.display = 'block'
+    artistLabel.style.marginBottom = '4px'
+    const artistInput = document.createElement('input')
+    artistInput.type = 'text'
+    artistInput.placeholder = '未知'
+    artistInput.value = ''
+    artistInput.style.width = '100%'
+    artistInput.style.padding = '8px'
+    artistInput.style.marginBottom = '20px'
+    artistInput.style.border = '1px solid #ccc'
+    artistInput.style.borderRadius = '4px'
+
+    // 按钮容器
+    const buttonContainer = document.createElement('div')
+    buttonContainer.style.display = 'flex'
+    buttonContainer.style.gap = '12px'
+    buttonContainer.style.justifyContent = 'flex-end'
+
+    const confirmBtn = document.createElement('button')
+    confirmBtn.textContent = '确定'
+    confirmBtn.style.padding = '6px 12px'
+    confirmBtn.style.backgroundColor = '#1890ff'
+    confirmBtn.style.color = '#fff'
+    confirmBtn.style.border = 'none'
+    confirmBtn.style.borderRadius = '4px'
+    confirmBtn.style.cursor = 'pointer'
+
+    const cancelBtn = document.createElement('button')
+    cancelBtn.textContent = '取消上传'
+    cancelBtn.style.padding = '6px 12px'
+    cancelBtn.style.backgroundColor = '#f5222d'
+    cancelBtn.style.color = '#fff'
+    cancelBtn.style.border = 'none'
+    cancelBtn.style.borderRadius = '4px'
+    cancelBtn.style.cursor = 'pointer'
+
+    confirmBtn.onclick = () => {
+      document.body.removeChild(overlay)
+      resolve({
+        title: titleInput.value,
+        artist: artistInput.value
+      })
+    }
+
+    cancelBtn.onclick = () => {
+      document.body.removeChild(overlay)
+      resolve(null) // 表示取消
+    }
+
+    // 组装 DOM
+    buttonContainer.appendChild(cancelBtn)
+    buttonContainer.appendChild(confirmBtn)
+
+    modal.appendChild(titleEl)
+    modal.appendChild(titleLabel)
+    modal.appendChild(titleInput)
+    modal.appendChild(artistLabel)
+    modal.appendChild(artistInput)
+    modal.appendChild(buttonContainer)
+
+    overlay.appendChild(modal)
+    document.body.appendChild(overlay)
+
+    // 聚焦到歌曲名输入框（可选）
+    titleInput.focus()
+  })
 }
 
 // 歌单相关
@@ -2356,6 +2530,26 @@ const openAvatarDialog = () => {
   if (avatarInput.value) {
     avatarInput.value.value = ''
     avatarInput.value.click()
+  }
+}
+// 登录/注册回车聚焦+提交逻辑
+const handleAuthInputEnter = (inputType) => {
+  if(authMode.value === 'register') {
+    // 注册模式：用户名 → 邮箱 → 密码 → 提交
+    if(inputType === 'username') {
+      authEmailInput.value?.focus()
+    } else if(inputType === 'email') {
+      authPwdInput.value?.focus()
+    } else if(inputType === 'password') {
+      register()
+    }
+  } else {
+    // 登录模式：邮箱 → 密码 → 提交
+    if(inputType === 'email') {
+      authPwdInput.value?.focus()
+    } else if(inputType === 'password') {
+      login()
+    }
   }
 }
 
