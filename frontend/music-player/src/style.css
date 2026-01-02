@@ -843,14 +843,25 @@ button:focus-visible {
 	cursor: pointer;
 	border: 1px solid var(--border-color);
 	font-size: 0.9rem;
-	background-color: #ffffff;
-	color: #1f2937;
+	background-color: var(--bg-tertiary);
+	color: var(--text-primary);
 	transition: all 0.3s ease;
 }
 
 .btn:hover {
-	background-color: #f9fafb;
+	background-color: var(--bg-secondary);
 	border-color: var(--primary);
+}
+
+:root[data-theme="dark"] .btn,
+:root:not([data-theme]) .btn {
+  background-color: rgba(30, 41, 59, 0.6);
+  border-color: rgba(96, 165, 250, 0.3);
+}
+
+:root[data-theme="light"] .btn {
+  background-color: rgba(255, 255, 255, 0.8);
+  border-color: rgba(96, 165, 250, 0.3);
 }
 .btn.small {
 	padding: 0.2rem 0.5rem;
@@ -873,6 +884,21 @@ button:focus-visible {
 }
 .btn.green-outline:hover {
 	background-color: rgba(96, 165, 250, 0.1);
+}
+.btn.btn-white,
+:root[data-theme="dark"] .btn.btn-white,
+:root[data-theme="light"] .btn.btn-white,
+:root:not([data-theme]) .btn.btn-white {
+	background-color: #fff !important;
+	color: #000 !important;
+	border-color: #fff !important;
+}
+.btn.btn-white:hover,
+:root[data-theme="dark"] .btn.btn-white:hover,
+:root[data-theme="light"] .btn.btn-white:hover,
+:root:not([data-theme]) .btn.btn-white:hover {
+	background-color: #f0f0f0 !important;
+	border-color: #f0f0f0 !important;
 }
 .btn.danger {
 	background-color: #ef4444;

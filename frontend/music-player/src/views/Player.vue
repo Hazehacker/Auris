@@ -17,7 +17,7 @@ import { api } from '../api.js'
             <button class="btn small" @click="logout">退出</button>
           </template>
           <template v-else>
-            <button class="btn" @click="openAuth('login')">登录</button>
+            <button class="btn btn-white" @click="openAuth('login')">登录</button>
             <button class="btn green-outline" @click="openAuth('register')">注册</button>
           </template>
         </div>
@@ -2393,6 +2393,18 @@ const handleAvatarUpload = async (e) => {
 
 
 <style scoped>
+/* 登录按钮白色背景样式 */
+.btn-white {
+  background-color: #fff !important;
+  color: #000 !important;
+  border-color: #fff !important;
+}
+
+.btn-white:hover {
+  background-color: #f0f0f0 !important;
+  border-color: #f0f0f0 !important;
+}
+
 /* 上传进度条样式 */
 .upload-progress {
   margin: 15px 0;
