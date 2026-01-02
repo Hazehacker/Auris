@@ -2532,26 +2532,6 @@ const openAvatarDialog = () => {
     avatarInput.value.click()
   }
 }
-// 登录/注册回车聚焦+提交逻辑
-const handleAuthInputEnter = (inputType) => {
-  if(authMode.value === 'register') {
-    // 注册模式：用户名 → 邮箱 → 密码 → 提交
-    if(inputType === 'username') {
-      authEmailInput.value?.focus()
-    } else if(inputType === 'email') {
-      authPwdInput.value?.focus()
-    } else if(inputType === 'password') {
-      register()
-    }
-  } else {
-    // 登录模式：邮箱 → 密码 → 提交
-    if(inputType === 'email') {
-      authPwdInput.value?.focus()
-    } else if(inputType === 'password') {
-      login()
-    }
-  }
-}
 
 // 新增：上传文件到后端（已废弃，头像上传直接使用 updateProfile）
 
