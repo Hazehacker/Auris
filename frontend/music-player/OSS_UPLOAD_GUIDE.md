@@ -120,10 +120,15 @@ uploads/{timestamp}_{randomStr}{extension}
 **来源（AllowedOrigins）：**
 ```
 http://localhost:5173
-http://localhost:3000
-https://your-domain.com
+https://auris.hazenix.top
 ```
-（根据实际的前端域名添加，开发环境通常是 `http://localhost:5173` 或 `http://localhost:3000`）
+⚠️ **重要提示：**
+- ✅ **正确格式**：`https://auris.hazenix.top`（不带路径，不带通配符）
+- ❌ **错误格式**：`https://auris.hazenix.top/*`（不能使用路径通配符）
+- ❌ **错误格式**：`https://*.hazenix.top`（OSS不支持子域通配符）
+- 如果有多个域名，每行一个
+- 必须包含协议（http:// 或 https://）
+- 如果使用非标准端口，必须包含端口号（如 `http://localhost:5173`）
 
 **允许Methods：**
 ```
@@ -145,15 +150,40 @@ ETag, x-oss-request-id
 3600
 ```
 
-### 常见错误
+### 常见错误和解决方案
 
-如果遇到以下错误，说明CORS未正确配置：
+#### 错误1：跨域请求失败（CORS错误）
+
+**错误表现：**
 - `XHR 错误（请求"错误"），PUT http://... -1`
 - `已连接：false，保持连接套接字：false`
 - 浏览器控制台显示CORS相关错误
 - 状态码为 `-1` 的请求失败
+- 错误信息包含 "CORS" 或 "Access-Control-Allow-Origin"
 
-**解决方法：** 按照上述步骤配置OSS的CORS规则，并确保前端域名在允许的来源列表中。
+**可能原因：**
+1. ❌ **来源格式错误** - 最常见的问题！
+   - 错误：`https://auris.hazenix.top/*`（使用了路径通配符）
+   - 正确：`https://auris.hazenix.top`（不带路径和通配符）
+   
+2. ❌ **缺少DELETE方法**
+   - 分片上传需要DELETE方法来清理失败的分片
+   - 必须包含：`PUT, POST, GET, DELETE, HEAD`
+   
+3. ❌ **来源不匹配**
+   - 实际请求的Origin与配置的来源不完全一致
+   - 检查浏览器Network标签中的请求头，确认实际的Origin值
+   
+4. ❌ **配置未生效**
+   - CORS配置保存后需要等待1-2分钟才能生效
+   - 清除浏览器缓存后重试
+
+**解决方法：**
+1. 检查并修正来源格式（去掉路径通配符）
+2. 确保包含所有必要的方法（特别是DELETE）
+3. 在浏览器开发者工具的Network标签中查看实际请求的Origin
+4. 保存配置后等待1-2分钟
+5. 清除浏览器缓存并刷新页面
 
 ### 验证CORS配置
 
@@ -182,16 +212,30 @@ ETag, x-oss-request-id
 
 ### 故障排查清单
 
-如果上传仍然失败，请检查：
+如果上传仍然失败，请逐项检查：
 
+**CORS配置检查：**
 - [ ] OSS Bucket的CORS规则已正确配置
-- [ ] 前端域名（包括端口）已添加到AllowedOrigins
-- [ ] 允许方法包含 `PUT`
-- [ ] 允许Headers设置为 `*` 或包含必要的头信息
-- [ ] CORS配置已保存并生效（可能需要等待几分钟）
+- [ ] 来源格式正确（不带路径通配符，如 `https://auris.hazenix.top` 而不是 `https://auris.hazenix.top/*`）
+- [ ] 前端域名（包括协议和端口）已添加到AllowedOrigins
+- [ ] 允许方法包含 `PUT, POST, GET, DELETE, HEAD`（DELETE很重要！）
+- [ ] 允许Headers设置为 `*`
+- [ ] 暴露Headers包含 `ETag, x-oss-request-id`
+- [ ] MaxAgeSeconds设置为 `3600`
+- [ ] CORS配置已保存并生效（等待1-2分钟）
+
+**浏览器检查：**
+- [ ] 打开浏览器开发者工具（F12）> Network标签
+- [ ] 尝试上传文件，查看失败的请求
+- [ ] 检查请求的Origin头是否与CORS配置的来源完全匹配
+- [ ] 检查响应头是否包含 `Access-Control-Allow-Origin`
+- [ ] 清除浏览器缓存后重试
+
+**其他检查：**
 - [ ] 浏览器控制台没有其他错误
 - [ ] STS临时凭证有效（未过期）
 - [ ] 网络连接正常
+- [ ] OSS的endpoint配置正确
 
 ## 注意事项
 

@@ -14,7 +14,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import top.hazenix.auris.properties.AliOssProperties;
-;
 
 
 import java.io.ByteArrayInputStream;
@@ -188,6 +187,7 @@ public class AliOssUtil {
         result.put("securityToken", response.getCredentials().getSecurityToken());
         result.put("bucket", aliOssProperties.getBucketName());
         result.put("region", region);
+        result.put("endpoint", aliOssProperties.getEndpoint());
         result.put("dir", "music/" + userId + "/");
         return result;
     }

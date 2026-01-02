@@ -1626,6 +1626,9 @@ const confirmUploadCover = async () => {
       }
     }
     
+    // 显示成功提示
+    alert('封面上传成功！')
+    
     // 关闭模态
     closeUploadCoverModal()
   } catch (err) {
@@ -1721,6 +1724,9 @@ const confirmUploadAudio = async () => {
         updatedSong.url = audioUrl
       }
     }
+    
+    // 显示成功提示
+    alert('音频上传成功！')
     
     // 关闭模态
     closeUploadAudioModal()

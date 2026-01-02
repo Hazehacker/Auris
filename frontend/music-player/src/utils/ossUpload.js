@@ -18,9 +18,19 @@ export async function uploadToOSS(file, credentials, onProgress) {
   }
 
   try {
+    // 处理region：如果提供了endpoint，从endpoint中提取region；否则使用提供的region或默认值
+    let region = credentials.region || 'oss-cn-hangzhou'
+    if (credentials.endpoint) {
+      // 从endpoint中提取region，例如 oss-cn-heyuan.aliyuncs.com -> oss-cn-heyuan
+      const endpointMatch = credentials.endpoint.match(/oss-([^.]+)/)
+      if (endpointMatch) {
+        region = `oss-${endpointMatch[1]}`
+      }
+    }
+    
     // 创建OSS客户端配置
     const ossConfig = {
-      region: credentials.region || 'oss-cn-hangzhou',
+      region: region,
       accessKeyId: credentials.accessKeyId,
       accessKeySecret: credentials.accessKeySecret,
       stsToken: credentials.securityToken,
@@ -45,6 +55,15 @@ export async function uploadToOSS(file, credentials, onProgress) {
     })
 
     console.log('OSS配置:', { ...ossConfig, accessKeySecret: '***', stsToken: '***' })
+    
+    // CORS诊断信息
+    const currentOrigin = window.location.origin
+    console.log('🔍 CORS诊断信息:')
+    console.log('  - 当前请求来源:', currentOrigin)
+    console.log('  - Bucket:', credentials.bucket)
+    console.log('  - 请确保OSS的CORS配置中包含以下来源:', currentOrigin)
+    console.log('  - ⚠️ 注意：来源格式应为 "' + currentOrigin + '"（不带路径通配符）')
+    console.log('  - ⚠️ 错误格式示例: "' + currentOrigin + '/*"（不要使用路径通配符）')
 
     // 创建OSS客户端
     const client = new OSS(ossConfig)
@@ -53,14 +72,22 @@ export async function uploadToOSS(file, credentials, onProgress) {
     const timestamp = Date.now()
     const randomStr = Math.random().toString(36).substring(2, 8)
     const ext = file.name.substring(file.name.lastIndexOf('.'))
-    const fileName = `uploads/${timestamp}_${randomStr}${ext}`
+    
+    // 使用后端返回的dir参数，如果没有则使用默认值
+    const baseDir = credentials.dir || 'music/'
+    // 确保dir以/结尾，但不要重复斜杠
+    const normalizedDir = baseDir.endsWith('/') ? baseDir : baseDir + '/'
+    const fileName = `${normalizedDir}${timestamp}_${randomStr}${ext}`
 
-    console.log('开始上传文件:', {
+    console.log('📤 开始上传文件:', {
       fileName,
       fileSize: file.size,
       fileType: file.type,
-      bucket: credentials.bucket
+      bucket: credentials.bucket,
+      dir: credentials.dir,
+      normalizedPath: fileName
     })
+    console.log('⚠️ 请确保权限策略允许此路径:', `acs:oss:*:*:${credentials.bucket}/${normalizedDir}*`)
 
     // 对于大文件（>100MB），使用分片上传
     const useMultipart = file.size > 100 * 1024 * 1024 // 100MB
@@ -120,8 +147,9 @@ export async function uploadToOSS(file, credentials, onProgress) {
       errorMessage = '访问密钥无效，请重新获取凭证'
     } else if (error.code === 'SignatureDoesNotMatch') {
       errorMessage = '签名不匹配，请重新获取凭证'
-    } else if (error.status === -1 || messageStr.includes('cors') || messageStr.includes('network') || messageStr.includes('failed')) {
-      errorMessage = '❌ 跨域请求失败！\n\n这通常是因为OSS的CORS配置不正确。\n\n请按以下步骤配置：\n1. 登录阿里云OSS控制台\n2. 选择Bucket: ' + (credentials.bucket || '你的Bucket') + '\n3. 进入"权限管理" > "跨域设置（CORS）"\n4. 添加规则，允许来源：' + window.location.origin + '\n5. 允许方法：PUT, POST, GET, DELETE, HEAD\n6. 允许Headers：*\n7. 暴露Headers：ETag, x-oss-request-id'
+    } else if (error.status === -1 || messageStr.includes('cors') || messageStr.includes('network') || messageStr.includes('failed') || error.code === 'RequestError') {
+      const currentOrigin = window.location.origin
+      errorMessage = '❌ 跨域请求失败！\n\n这通常是因为OSS的CORS配置不正确。\n\n当前请求来源：' + currentOrigin + '\n\n请按以下步骤检查并修复：\n\n1. 登录阿里云OSS控制台\n2. 选择Bucket: ' + (credentials.bucket || '你的Bucket') + '\n3. 进入"权限管理" > "跨域设置（CORS）"\n\n4. 检查并修正配置：\n   ⚠️ 来源（AllowedOrigins）：\n   - 必须包含：' + currentOrigin + '\n   - ❌ 不要使用路径通配符（如 https://domain.com/*）\n   - ✅ 正确格式：https://domain.com（不带路径和通配符）\n   - 如果有多个域名，每行一个\n\n   ⚠️ 允许Methods：\n   - 必须包含：PUT, POST, GET, DELETE, HEAD\n   - DELETE方法很重要（分片上传需要）\n\n   ⚠️ 允许Headers：\n   - 设置为：*\n\n   ⚠️ 暴露Headers：\n   - 设置为：ETag, x-oss-request-id\n\n   ⚠️ MaxAgeSeconds：\n   - 建议设置为：3600\n\n5. 保存配置后，等待1-2分钟让配置生效\n\n6. 如果仍然失败，请检查：\n   - 浏览器控制台的Network标签，查看实际请求的Origin\n   - 确认OSS的endpoint是否正确\n   - 清除浏览器缓存后重试'
     } else if (error.code === 'RequestTimeout') {
       errorMessage = '请求超时，请检查网络连接或稍后重试'
     } else if (error.message) {
