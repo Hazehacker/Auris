@@ -153,7 +153,7 @@ button:focus-visible {
   box-shadow: 0 6px 14px rgba(16,24,40,0.03);
 }
 .controls-row { display:flex; gap:10px; align-items:center; margin-bottom:10px; }
-.btn { padding:10px 14px; border-radius:10px; cursor:pointer; border:none; font-weight:600 }
+.btn { padding:10px 14px; border-radius:10px; cursor:pointer; border:none; font-weight:600; background-color:#ffffff; color:#1f2937 }
 .btn:disabled { opacity:0.55; cursor:not-allowed }
 .btn-primary { background: linear-gradient(90deg,var(--primary),var(--primary-600)); color:white }
 .btn-secondary { background:#ffffff; color:var(--primary-600); border:1px solid rgba(96, 165, 250,0.12) }
@@ -938,27 +938,16 @@ button:focus-visible {
 	padding: 0.4rem 0.8rem;
 	border-radius: 4px;
 	cursor: pointer;
-	border: 1px solid var(--border-color);
+	border: 1px solid rgba(96, 165, 250, 0.3);
 	font-size: 0.9rem;
-	background-color: var(--bg-tertiary);
-	color: var(--text-primary);
+	background-color: #ffffff;
+	color: #1f2937;
 	transition: all 0.3s ease;
 }
 
 .btn:hover {
-	background-color: var(--bg-secondary);
+	background-color: #f9fafb;
 	border-color: var(--primary);
-}
-
-:root[data-theme="dark"] .btn,
-:root:not([data-theme]) .btn {
-  background-color: rgba(30, 41, 59, 0.6);
-  border-color: rgba(96, 165, 250, 0.3);
-}
-
-:root[data-theme="light"] .btn {
-  background-color: rgba(255, 255, 255, 0.8);
-  border-color: rgba(96, 165, 250, 0.3);
 }
 .btn.small {
 	padding: 0.2rem 0.5rem;
@@ -974,40 +963,29 @@ button:focus-visible {
 	background-color: var(--primary-600);
 }
 .btn.green-outline {
-	border: 1px solid var(--primary);
+	border: 1px solid rgba(96, 165, 250, 0.12);
 	color: var(--primary);
-	background-color: transparent;
+	background-color: #ffffff;
 	transition: all 0.3s ease;
 }
 .btn.green-outline:hover {
 	background-color: rgba(96, 165, 250, 0.1);
-}
-
-/* 深色模式下的注册按钮样式 */
-:root[data-theme="dark"] .btn.green-outline,
-:root:not([data-theme]) .btn.green-outline {
-	border-color: #4a90e2;
-	color: #4a90e2;
-}
-
-:root[data-theme="dark"] .btn.green-outline:hover,
-:root:not([data-theme]) .btn.green-outline:hover {
-	background-color: rgba(74, 144, 226, 0.1);
+	border-color: var(--primary);
 }
 .btn.btn-white,
 :root[data-theme="dark"] .btn.btn-white,
 :root[data-theme="light"] .btn.btn-white,
 :root:not([data-theme]) .btn.btn-white {
-	background-color: #fff !important;
-	color: #000 !important;
-	border-color: #fff !important;
+	background-color: #ffffff !important;
+	color: #1f2937 !important;
+	border: 1px solid rgba(96, 165, 250, 0.3) !important;
 }
 .btn.btn-white:hover,
 :root[data-theme="dark"] .btn.btn-white:hover,
 :root[data-theme="light"] .btn.btn-white:hover,
 :root:not([data-theme]) .btn.btn-white:hover {
-	background-color: #f0f0f0 !important;
-	border-color: #f0f0f0 !important;
+	background-color: #f9fafb !important;
+	border-color: var(--primary) !important;
 }
 .btn.danger {
 	background-color: #ef4444;
@@ -2968,18 +2946,18 @@ tr.active {
   border-color: #f0f0f0 !important;
 }
 
-/* 深色模式下的登录按钮样式 */
+/* 深色模式下的登录按钮样式 - 保持白色背景 */
 :root[data-theme="dark"] .btn.btn-white,
 :root:not([data-theme]) .btn.btn-white {
-  background-color: #2a3a4a !important;
-  color: #e5e7eb !important;
-  border-color: rgba(255,255,255,0.1) !important;
+  background-color: #ffffff !important;
+  color: #1f2937 !important;
+  border: 1px solid rgba(96, 165, 250, 0.3) !important;
 }
 
 :root[data-theme="dark"] .btn.btn-white:hover,
 :root:not([data-theme]) .btn.btn-white:hover {
-  background-color: #34495e !important;
-  border-color: rgba(255,255,255,0.15) !important;
+  background-color: #f9fafb !important;
+  border-color: var(--primary) !important;
 }
 
 /* 上传进度条样式 */
