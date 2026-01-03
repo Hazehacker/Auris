@@ -203,7 +203,7 @@ button:focus-visible {
   margin: 24px auto;
   padding: 12px;
   /* 给底部固定播放器留出内边距，避免覆盖内容 */
-  padding-bottom: 110px;
+  padding-bottom: 12px;
   background: #fff;
   border-radius: 8px;
   border: 1px solid rgba(16,24,40,0.03);
@@ -226,6 +226,23 @@ button:focus-visible {
 .sidebar { width:220px; border-right:1px solid rgba(16,24,40,0.03); padding-right:12px }
 .sidebar-list { list-style:none; padding:8px 0; margin:0 }
 .side-item { padding:10px 12px; border-radius:6px; cursor:pointer; margin-bottom:6px; font-weight:600; color:#163827; display:flex; align-items:center }
+
+/* 深色模式下的侧边栏项目 */
+:root[data-theme="dark"] .side-item,
+:root:not([data-theme]) .side-item {
+  color: var(--text-primary);
+}
+
+:root[data-theme="dark"] .side-item:hover,
+:root:not([data-theme]) .side-item:hover {
+  background: rgba(74, 144, 226, 0.08);
+}
+
+:root[data-theme="dark"] .side-item.active,
+:root:not([data-theme]) .side-item.active {
+  background: rgba(74, 144, 226, 0.15);
+  color: #4a90e2;
+}
 .side-item:hover { background:rgba(96, 165, 250,0.05) }
 .side-item.active { background: rgba(96, 165, 250,0.08); color: var(--primary) }
 .sidebar-empty { margin-top:14px; color:var(--muted); font-size:0.95rem }
@@ -248,9 +265,21 @@ button:focus-visible {
 .content { flex:1; padding-left:12px }
 .playlist-detail { display:flex; gap:18px; align-items:flex-start; margin-bottom:18px }
 /* 封面（支持居中操作按钮与预览） */
-.cover { width:160px; height:160px; background:#f3f6f5; border:4px solid rgba(16,24,40,0.04); border-radius:6px; display:flex; align-items:center; justify-content:center; position:relative; overflow:hidden; }
+.cover { width:160px; height:160px; background:#f3f6f5; border-radius:6px; display:flex; align-items:center; justify-content:center; position:relative; overflow:hidden; }
+
+/* 深色模式下的封面样式 */
+:root[data-theme="dark"] .cover,
+:root:not([data-theme]) .cover {
+  background: #10182a;
+}
+
+/* 浅色模式下的封面样式 */
+:root[data-theme="light"] .cover {
+  background: #f3f6f5;
+  border-color: rgba(16,24,40,0.04);
+}
 .cover-placeholder { color:var(--muted); width:100%; height:100%; display:flex; align-items:center; justify-content:center }
-.cover-default-icon { width:72px; height:72px; display:block; }
+.cover-default-icon { width:100%; height:100%; display:block; }
 /* 编辑时覆盖层，按钮居中显示 */
 .cover-overlay { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; gap:8px; z-index:2; pointer-events:auto }
 .btn.small { padding:6px 10px; font-size:0.9rem; border-radius:6px }
@@ -272,7 +301,7 @@ button:focus-visible {
 .playlist-title { font-size: 3rem;margin-top: -10px; }
 .meta { flex:1; display:flex; flex-direction:column }
 .plist-name { margin:0 0 6px 0 }
-.creator { color:var(--muted); margin-bottom:20px; text-align: right; }
+.creator {display: none;}
 .collection-creator { margin-top: 60px; }
 .playlist-desc { color: var(--muted); margin-bottom: 10px; font-size: 0.95rem; text-align: center; }
 .desc { width:80%; border:1px solid rgba(16,24,40,0.02); padding:8px; border-radius:6px; resize:none; background: #fbfffb; color: var(--muted) }
@@ -292,7 +321,7 @@ button:focus-visible {
 .playlist-table .fav-btn { border:none; background:transparent; cursor:pointer; font-size:16px }
 .playlist-table .empty { text-align:center; color:var(--muted); padding:20px }
 
-.bottom-bar { position:fixed; left:50%; transform:translateX(-50%); bottom:0; display:flex; gap:12px; align-items:center; padding:12px 16px; border-top:1px solid rgba(16,24,40,0.04); background:#fff; width: min(95vw, 1200px); z-index:9999; box-shadow: 0 -6px 18px rgba(16,24,40,0.06); border-radius:8px 8px 0 0 }
+.bottom-bar { position:static; margin-bottom: 40px; left:50%; transform:translateX(-1%); bottom:0; display:flex; gap:12px; align-items:center; padding:12px 16px; border-top:1px solid rgba(16,24,40,0.04); background:#fff; width: 97.5%; z-index:9999; box-shadow: 0 -6px 18px rgba(16,24,40,0.06); border-radius:8px 8px 0 0 }
 .player-controls { display:flex; gap:10px; align-items:center }
 .icon-btn { background:transparent; border:1px solid rgba(16,24,40,0.04); padding:6px 10px; border-radius:8px; cursor:pointer }
 .icon-btn.fav-toggle { font-size:16px; padding:6px 8px; width:36px; display:inline-flex; align-items:center; justify-content:center }
@@ -531,7 +560,7 @@ button:focus-visible {
 
 /* 新增：上一首/下一首按钮样式优化 */
 .prev-btn, .next-btn {
-  font-size: 18px !important;
+  font-size: 12px !important;
   color: #102032 !important; /* 深色文字 */
   border-color: rgba(16, 24, 40, 0.1) !important;
   background-color: #f8f9fa !important;
@@ -953,6 +982,18 @@ button:focus-visible {
 .btn.green-outline:hover {
 	background-color: rgba(96, 165, 250, 0.1);
 }
+
+/* 深色模式下的注册按钮样式 */
+:root[data-theme="dark"] .btn.green-outline,
+:root:not([data-theme]) .btn.green-outline {
+	border-color: #4a90e2;
+	color: #4a90e2;
+}
+
+:root[data-theme="dark"] .btn.green-outline:hover,
+:root:not([data-theme]) .btn.green-outline:hover {
+	background-color: rgba(74, 144, 226, 0.1);
+}
 .btn.btn-white,
 :root[data-theme="dark"] .btn.btn-white,
 :root[data-theme="light"] .btn.btn-white,
@@ -1244,6 +1285,89 @@ button:focus-visible {
 .profile-edit-btn {
 	align-self: flex-start;
 }
+.profile-edit-actions {
+	display: flex;
+	gap: 0.75rem;
+	margin-top: 1rem;
+	align-self: flex-start;
+}
+.profile-edit-fields {
+	margin: 1rem 0;
+	padding: 1rem;
+	background-color: var(--bg-tertiary);
+	border-radius: 8px;
+}
+.edit-field {
+	margin-bottom: 1rem;
+}
+.edit-field:last-child {
+	margin-bottom: 0;
+}
+.edit-label {
+	display: block;
+	margin-bottom: 0.5rem;
+	font-weight: 500;
+	color: var(--text-secondary);
+	font-size: 0.9rem;
+}
+.profile-bio-input {
+	width: 100%;
+	padding: 0.75rem;
+	border-radius: 6px;
+	border: 1px solid var(--border-color);
+	background-color: var(--bg-secondary);
+	color: var(--text-primary);
+	font-size: 0.95rem;
+	resize: vertical;
+	min-height: 80px;
+	transition: all 0.3s ease;
+}
+.profile-bio-input:focus {
+	border-color: var(--primary);
+	outline: none;
+	background-color: var(--bg-primary);
+}
+.profile-gender-select,
+.profile-date-input {
+	width: 100%;
+	padding: 0.75rem;
+	border-radius: 6px;
+	border: 1px solid var(--border-color);
+	background-color: var(--bg-secondary);
+	color: var(--text-primary);
+	font-size: 0.95rem;
+	transition: all 0.3s ease;
+}
+.profile-gender-select:focus,
+.profile-date-input:focus {
+	border-color: var(--primary);
+	outline: none;
+	background-color: var(--bg-primary);
+}
+.profile-extra-info {
+	margin: 1rem 0;
+}
+.profile-bio {
+	margin: 0.5rem 0;
+	padding: 0.75rem;
+	background-color: var(--bg-tertiary);
+	border-radius: 6px;
+	font-size: 0.95rem;
+	line-height: 1.5;
+	color: var(--text-secondary);
+}
+.profile-meta {
+	display: flex;
+	gap: 1rem;
+	margin-top: 0.5rem;
+}
+.meta-item {
+	font-size: 0.9rem;
+	color: var(--text-secondary);
+	padding: 0.25rem 0.5rem;
+	background-color: var(--bg-tertiary);
+	border-radius: 4px;
+}
 .profile-actions {
 	display: flex;
 	gap: 1rem;
@@ -1346,9 +1470,7 @@ button:focus-visible {
 	background-color: var(--bg-secondary);
 }
 .creator {
-	color: var(--text-secondary);
-	font-size: 0.9rem;
-	margin-bottom: 1rem;
+	display: none;
 }
 .meta-actions {
 	display: flex;
@@ -2846,6 +2968,20 @@ tr.active {
   border-color: #f0f0f0 !important;
 }
 
+/* 深色模式下的登录按钮样式 */
+:root[data-theme="dark"] .btn.btn-white,
+:root:not([data-theme]) .btn.btn-white {
+  background-color: #2a3a4a !important;
+  color: #e5e7eb !important;
+  border-color: rgba(255,255,255,0.1) !important;
+}
+
+:root[data-theme="dark"] .btn.btn-white:hover,
+:root:not([data-theme]) .btn.btn-white:hover {
+  background-color: #34495e !important;
+  border-color: rgba(255,255,255,0.15) !important;
+}
+
 /* 上传进度条样式 */
 .upload-progress {
   margin: 15px 0;
@@ -2905,3 +3041,14 @@ tr.active {
   background-color: #2c3e50;
 }
 
+.player-container {
+  padding-bottom: 0 !important;
+}
+
+.main-area {
+  padding-bottom: 0 !important;
+}
+
+.content {
+  overflow: hidden !important;
+}

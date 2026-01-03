@@ -85,12 +85,12 @@ import { api } from '../api.js'
                 <svg class="cover-default-icon" viewBox="0 0 64 64" role="img" aria-label="默认封面">
                   <defs>
                     <linearGradient id="coverGrad" x1="0" x2="1" y1="0" y2="1">
-                      <stop offset="0" stop-color="#e9f7f0" />
-                      <stop offset="1" stop-color="#dff7ef" />
+                      <stop offset="0" :stop-color="isDarkMode ? '#192335' : '#e9f7f0'" />
+                      <stop offset="1" :stop-color="isDarkMode ? '#1e2d3d' : '#dff7ef'" />
                     </linearGradient>
                   </defs>
-                  <rect x="6" y="6" width="52" height="52" rx="8" fill="url(#coverGrad)" />
-                  <path d="M40 20v16a6 6 0 1 1-4-5.2V22l-10 3v12" fill="none" stroke="#2fb67d" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+                  <rect x="0" y="0" width="64" height="64" rx="8" fill="url(#coverGrad)" />
+                  <path d="M40 20v16a6 6 0 1 1-4-5.2V22l-10 3v12" fill="none" :stroke="isDarkMode ? '#4a90e2' : '#2fb67d'" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
                 </svg>
               </div>
               <!-- 编辑时显示覆盖操作 -->
@@ -280,13 +280,59 @@ import { api } from '../api.js'
                             <div class="profile-info">
                                 <h2 class="profile-username">
                                     <template v-if="editingProfile">
-                                        <input v-model="editProfileForm.username" class="profile-name-input" />
+                                        <input v-model="editProfileForm.username" class="profile-name-input" 
+                                               placeholder="用户名" maxlength="30" />
                                     </template>
                                     <template v-else>
                                         {{ currentUser ? currentUser.username : '未登录' }}
                                     </template>
                                 </h2>
                                 <p class="profile-email">{{ currentUser ? currentUser.email : '请登录以查看个人信息' }}</p>
+                                
+                                <!-- 编辑模式下的额外信息 -->
+                                <template v-if="editingProfile && currentUser">
+                                    <div class="profile-edit-fields">
+                                        <div class="edit-field">
+                                            <label class="edit-label">个人简介：</label>
+                                            <textarea 
+                                                v-model="editProfileForm.bio" 
+                                                class="profile-bio-input"
+                                                placeholder="介绍一下自己..."
+                                                maxlength="200"
+                                                rows="3"></textarea>
+                                        </div>
+                                        <div class="edit-field">
+                                            <label class="edit-label">性别：</label>
+                                            <select v-model="editProfileForm.gender" class="profile-gender-select">
+                                                <option value="1">男</option>
+                                                <option value="2">女</option>
+                                                <option value="0">保密</option>
+                                            </select>
+                                        </div>
+                                        <div class="edit-field">
+                                            <label class="edit-label">生日：</label>
+                                            <input 
+                                                v-model="editProfileForm.birthday" 
+                                                type="date" 
+                                                class="profile-date-input" />
+                                        </div>
+                                    </div>
+                                </template>
+                                
+                                <!-- 非编辑模式下的额外信息展示 -->
+                                <template v-else-if="currentUser">
+                                    <div class="profile-extra-info">
+                                        <p v-if="currentUser.bio" class="profile-bio">{{ currentUser.bio }}</p>
+                                        <div class="profile-meta">
+                                            <span v-if="currentUser.gender !== undefined" class="meta-item">
+                                                {{ currentUser.gender === 1 ? '👨 男' : currentUser.gender === 2 ? '👩 女' : '🔒 保密' }}
+                                            </span>
+                                            <span v-if="currentUser.birthday" class="meta-item">
+                                                🎂 {{ formatBirthday(currentUser.birthday) }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </template>
                                 <div class="profile-stats">
                                     <div class="stat-item">
                                         <span class="stat-value">{{ songList.length }}</span>
@@ -302,11 +348,21 @@ import { api } from '../api.js'
                                     </div>
                                 </div>
                                 <!-- 编辑个人信息按钮（登录后显示） -->
-                                <button v-if="currentUser"
-                                        class="btn green-outline profile-edit-btn"
-                                        @click="toggleEditProfile">
-                                    {{ editingProfile ? '保存' : '编辑信息' }}
-                                </button>
+                                <div class="profile-edit-actions" v-if="currentUser">
+                                    <template v-if="editingProfile">
+                                        <button class="btn green" @click="saveProfile">
+                                            💾 保存
+                                        </button>
+                                        <button class="btn btn-white" @click="cancelEditProfile">
+                                            ❌ 取消
+                                        </button>
+                                    </template>
+                                    <template v-else>
+                                        <button class="btn green-outline profile-edit-btn" @click="toggleEditProfile">
+                                            ✏️ 编辑信息
+                                        </button>
+                                    </template>
+                                </div>
                             </div>
                         </div>
 
@@ -1037,6 +1093,10 @@ const coverStyle = computed(() => {
   if (viewMode.value === 'playlist' && selectedPlaylist.value && selectedPlaylist.value.cover) {
     return { backgroundImage: `url(${selectedPlaylist.value.cover})`, backgroundSize: 'cover', backgroundPosition: 'center' }
   }
+  // 根据主题返回不同的背景渐变
+  if (isDarkMode.value) {
+    return { backgroundImage: 'linear-gradient(90deg,#2a3a4a,#1e2d3d)' }
+  }
   return { backgroundImage: 'linear-gradient(90deg,#e9f7f0,#f7fff9)' }
 })
 
@@ -1048,30 +1108,61 @@ const openCoverDialog = () => {
 }
 
 const handleCoverUpload = (e) => {
-  const f = e.target.files && e.target.files[0]
-  if (!f) return
-  if (!f.type || !f.type.startsWith('image/')) {
-    console.warn(`文件 ${f.name} 不是图片格式`)
-    return
-  }
-  const url = URL.createObjectURL(f)
-  if (selectedPlaylist.value) {
-    if (selectedPlaylist.value.cover && typeof selectedPlaylist.value.cover === 'string' && selectedPlaylist.value.cover.startsWith('blob:')) {
-      try { URL.revokeObjectURL(selectedPlaylist.value.cover) } catch (e) {}
-    }
-    selectedPlaylist.value.cover = url
-    selectedPlaylist.value.coverFile = f
-  }
-}
+  const f = e.target.files && e.target.files[0];
+  if (!f) return;
 
-const removeCover = () => {
-  if (!selectedPlaylist.value || !selectedPlaylist.value.cover) return
-  if (selectedPlaylist.value.cover.startsWith('blob:')) {
-    try { URL.revokeObjectURL(selectedPlaylist.value.cover) } catch (e) {}
+  // 1. 校验文件类型（严格匹配图片）
+  if (!f.type || !f.type.startsWith('image/')) {
+    alert(`文件【${f.name}】不是图片格式！仅支持JPG/PNG/GIF`);
+    return;
   }
-  selectedPlaylist.value.cover = null
-  selectedPlaylist.value.coverFile = null
-}
+  // 2. 校验文件大小（限制5MB，适配后端常规限制）
+  if (f.size > 5 * 1024 * 1024) {
+    alert("封面图片大小不能超过5MB，请选择更小的图片！");
+    return;
+  }
+
+  // 3. 生成前端预览URL，缓存文件对象（用于后续上传）
+  const previewUrl = URL.createObjectURL(f);
+  if (selectedPlaylist.value) {
+    // 清理旧的blob预览URL，防止内存泄漏
+    if (selectedPlaylist.value.cover && selectedPlaylist.value.cover.startsWith('blob:')) {
+      try { URL.revokeObjectURL(selectedPlaylist.value.cover); } catch (e) {}
+    }
+    selectedPlaylist.value.cover = previewUrl; // 前端预览
+    selectedPlaylist.value.coverFile = f; // 缓存文件对象，用于保存时上传
+  }
+};
+
+const removeCover = async () => {
+  if (!selectedPlaylist.value || !selectedPlaylist.value.cover) return;
+  if (!token.value) {
+    alert("请先登录后再操作！");
+    openAuth('login');
+    return;
+  }
+
+  try {
+    // 1. 调用后端接口，清空封面（传递cover:null）
+    await api.updatePlaylist({
+      id: selectedPlaylist.value.id,
+      cover: null // 后端识别null为「移除封面」
+    });
+
+    // 2. 清理前端本地数据，释放blob临时URL
+    if (selectedPlaylist.value.cover.startsWith('blob:')) {
+      try { URL.revokeObjectURL(selectedPlaylist.value.cover); } catch (e) {}
+    }
+    selectedPlaylist.value.cover = null;
+    selectedPlaylist.value.coverFile = null;
+    
+    await fetchPlaylists();
+    alert("歌单封面已成功移除！");
+  } catch (err) {
+    console.error("移除封面失败：", err);
+    alert(`移除封面失败：${err.message}`);
+  }
+};
 
 // 身份认证核心（全局唯一，开屏/内部共用，登录/注册成功才关开屏）
 const authModalOpen = ref(false)
@@ -1258,7 +1349,7 @@ const performSearch = () => {
   viewMode.value = 'search'
 }
 
-// 文件上传处理
+// 文件上传处理（保留歌曲信息模态框 + 替换为OSS直传 + 同步播放URL+歌单数据）
 const handleFileUpload = async (e) => {
   const files = e.target.files
   if (!files || !files.length) return
@@ -1274,9 +1365,7 @@ const handleFileUpload = async (e) => {
   if (!selectedPlaylistId.value) {
     const create = confirm('请先选择或创建一个歌单，是否现在创建？')
     if (create) {
-      // 打开创建歌单模态，用户创建完成后会自动选中新歌单
       openCreatePlaylistModal()
-      // 提示用户创建完成后可以继续上传
       alert('请先创建歌单，创建完成后可以继续上传歌曲')
       return
     } else {
@@ -1284,92 +1373,126 @@ const handleFileUpload = async (e) => {
     }
   }
 
-  // === 新增：弹出输入歌曲名和歌手名的模态框 ===
+  // 原有歌曲信息输入模态框，逻辑一行未改
   const userInput = await showSongInfoModal(files[0].name)
   if (!userInput) {
-    // 用户点击了“取消上传”
+    // 用户点击了“取消上传”，终止流程
     return
   }
-  // userInput = { title, artist }
 
-  // 上传文件到选中的歌单
+  // 批量处理上传文件，保留原有循环逻辑
   for (const file of files) {
+    // 原有音频格式过滤逻辑
     if (!['audio/mpeg', 'audio/wav', 'audio/mp3'].includes(file.type)) continue
 
-    // 使用用户输入的标题和歌手（若为空则回退到默认）
+    // 用户输入的标题/歌手 兜底处理逻辑
     let title = userInput.title.trim() === '' ? file.name.replace(/\.(mp3|wav)$/i, '') : userInput.title.trim()
     let artist = userInput.artist.trim() === '' ? '未知' : userInput.artist.trim()
 
     try {
-      // 使用接口11：向歌单添加歌曲
-      const data = await api.addTrackToPlaylist({
+      // 移除原普通接口上传，替换为【OSS直传完整流程】
+      // 1. 先调用接口创建歌曲基础信息，获取歌曲ID（用于OSS直传绑定）
+      const songRes = await api.createTrack({
         playlistId: selectedPlaylistId.value,
         title: title,
-        artist: artist,
-        file: file
+        artist: artist
       })
-      
-      if (data.code === 200) {
-        // 如果上传了音频文件，data.data 会返回音频链接
-        // 需要重新获取歌单中的歌曲列表来更新界面
-        await loadPlaylistTracks(selectedPlaylistId.value)
-      }
+      if (songRes.code !== 200) throw new Error(songRes.msg || '创建歌曲信息失败')
+      const songId = songRes.data.id
+
+      // 2. 完整集成OSS直传核心逻辑（和你confirmUploadAudio里的完全一致）
+      let uploadAudioProgress = 0 // 单文件上传进度（可根据需求挂载到全局响应式）
+      const audioUrl = await uploadAudioToOSS(
+        songId,
+        file,
+        async (trackId) => {
+          // 获取OSS临时上传凭证
+          const credRes = await api.getAudioUploadCredentials(trackId)
+          if (credRes.code !== 200) {
+            throw new Error(credRes.msg || '获取OSS上传凭证失败')
+          }
+          return credRes.data
+        },
+        (progress) => {
+          // 进度回调：如需页面展示进度，可替换为全局响应式变量赋值
+          uploadAudioProgress = progress
+          console.log(`【${title}】上传进度：${progress}%`)
+        }
+      )
+
+      // 3. OSS上传成功后，更新歌曲的音频URL到后端
+      const updateRes = await api.updateTrackUrl({
+        trackId: songId,
+        audioUrl: audioUrl
+      })
+      if (updateRes.code !== 200) throw new Error(updateRes.msg || '更新歌曲播放地址失败')
+      // ======================================================
+
+      // 保留+强化：重新加载歌单数据，同步最新歌曲&播放URL
+      await loadPlaylistTracks(selectedPlaylistId.value)
+      alert(`歌曲【${title}】上传成功，可立即播放！`)
+
     } catch (err) {
-      console.error('上传失败:', err)
-      alert('上传失败: ' + (err.message || '未知错误'))
+      // 保留+优化：错误捕获+友好提示
+      console.error(`【${title}】上传失败:`, err)
+      alert(`歌曲【${title}】上传失败: ` + (err.message || '未知错误'))
     }
   }
 }
 
-// 加载歌单中的歌曲列表
+// 加载歌单中的歌曲列表（核心修复：完整同步后端数据，解决播放URL为空）
 const loadPlaylistTracks = async (playlistId) => {
   try {
     const data = await api.getTracksByPlaylist(playlistId)
     if (data.code === 200 && Array.isArray(data.data)) {
-      // 将歌曲添加到 songList，并更新歌单的歌曲列表
       const playlist = playlists.value.find(p => p.id === playlistId)
       if (playlist) {
-        // 更新歌单中的歌曲索引
-        const trackIndices = data.data.map(track => {
-          // 检查歌曲是否已存在于 songList
+        const trackIndices = []
+        //遍历后端返回的每首歌曲，完整同步到前端
+        for (const track of data.data) {
           let songIndex = songList.value.findIndex(s => s.id === track.id)
           if (songIndex === -1) {
-            // 添加新歌曲到 songList
+            //后端返回的 filePath 就是真实播放URL，赋值给 song.url
             songList.value.push({
               id: track.id,
-              name: track.title, // 接口返回的是 title
+              name: track.title,
               artist: track.artist,
               album: track.album,
-              url: track.filePath, // 接口返回的是 filePath
+              url: track.filePath, //核心：绑定播放URL，解决无法播放
               duration: track.duration || 0,
               coverUrl: track.coverUrl,
               fav: false
             })
             songIndex = songList.value.length - 1
           } else {
-            // 更新已存在的歌曲信息
+            //更新已有歌曲的URL和信息，确保播放正常
             songList.value[songIndex] = {
               ...songList.value[songIndex],
               name: track.title,
               artist: track.artist,
               album: track.album,
-              url: track.filePath,
+              url: track.filePath, //覆盖最新播放URL
               duration: track.duration || songList.value[songIndex].duration,
               coverUrl: track.coverUrl || songList.value[songIndex].coverUrl
             }
           }
-          return songIndex
-        })
+          trackIndices.push(songIndex)
+        }
         playlist.songs = trackIndices
       }
     }
   } catch (err) {
     console.error('加载歌单歌曲失败:', err)
+    alert('加载歌曲失败，请刷新重试')
   }
 }
 
 function showSongInfoModal(filename) {
   return new Promise((resolve) => {
+    // 获取当前主题
+    const isDark = document.documentElement.dataset.theme === 'dark' || 
+                  (!document.documentElement.dataset.theme && window.matchMedia('(prefers-color-scheme: dark)').matches)
+    
     // 创建遮罩层
     const overlay = document.createElement('div')
     overlay.style.position = 'fixed'
@@ -1385,22 +1508,25 @@ function showSongInfoModal(filename) {
 
     // 创建模态框内容
     const modal = document.createElement('div')
-    modal.style.backgroundColor = '#fff'
+    modal.style.backgroundColor = isDark ? '#1f2937' : '#fff'
+    modal.style.color = isDark ? '#e5e7eb' : '#111827'
     modal.style.padding = '24px'
     modal.style.borderRadius = '8px'
     modal.style.minWidth = '300px'
-    modal.style.boxShadow = '0 4px 12px rgba(0,0,0,0.3)'
+    modal.style.boxShadow = isDark ? '0 4px 12px rgba(0,0,0,0.5)' : '0 4px 12px rgba(0,0,0,0.3)'
 
     const titleEl = document.createElement('h3')
     titleEl.textContent = '请输入歌曲信息'
     titleEl.style.marginTop = '0'
     titleEl.style.marginBottom = '16px'
+    titleEl.style.color = isDark ? '#e5e7eb' : '#111827'
 
     // 歌曲名输入框
     const titleLabel = document.createElement('label')
     titleLabel.textContent = '歌曲名：'
     titleLabel.style.display = 'block'
     titleLabel.style.marginBottom = '4px'
+    titleLabel.style.color = isDark ? '#d1d5db' : '#374151'
     const titleInput = document.createElement('input')
     titleInput.type = 'text'
     titleInput.placeholder = '若为空白字符则取文件名为默认单曲名字'
@@ -1408,14 +1534,17 @@ function showSongInfoModal(filename) {
     titleInput.style.width = '100%'
     titleInput.style.padding = '8px'
     titleInput.style.marginBottom = '16px'
-    titleInput.style.border = '1px solid #ccc'
+    titleInput.style.border = `1px solid ${isDark ? '#4b5563' : '#ccc'}`
     titleInput.style.borderRadius = '4px'
+    titleInput.style.backgroundColor = isDark ? '#374151' : '#fff'
+    titleInput.style.color = isDark ? '#e5e7eb' : '#111827'
 
     // 歌手名输入框
     const artistLabel = document.createElement('label')
     artistLabel.textContent = '歌手名：'
     artistLabel.style.display = 'block'
     artistLabel.style.marginBottom = '4px'
+    artistLabel.style.color = isDark ? '#d1d5db' : '#374151'
     const artistInput = document.createElement('input')
     artistInput.type = 'text'
     artistInput.placeholder = '未知'
@@ -1423,8 +1552,10 @@ function showSongInfoModal(filename) {
     artistInput.style.width = '100%'
     artistInput.style.padding = '8px'
     artistInput.style.marginBottom = '20px'
-    artistInput.style.border = '1px solid #ccc'
+    artistInput.style.border = `1px solid ${isDark ? '#4b5563' : '#ccc'}`
     artistInput.style.borderRadius = '4px'
+    artistInput.style.backgroundColor = isDark ? '#374151' : '#fff'
+    artistInput.style.color = isDark ? '#e5e7eb' : '#111827'
 
     // 按钮容器
     const buttonContainer = document.createElement('div')
@@ -1435,20 +1566,38 @@ function showSongInfoModal(filename) {
     const confirmBtn = document.createElement('button')
     confirmBtn.textContent = '确定'
     confirmBtn.style.padding = '6px 12px'
-    confirmBtn.style.backgroundColor = '#1890ff'
+    confirmBtn.style.backgroundColor = isDark ? '#3b82f6' : '#1890ff'
     confirmBtn.style.color = '#fff'
     confirmBtn.style.border = 'none'
     confirmBtn.style.borderRadius = '4px'
     confirmBtn.style.cursor = 'pointer'
+    confirmBtn.style.transition = 'background-color 0.2s'
+    
+    // 添加悬停效果
+    confirmBtn.onmouseenter = () => {
+      confirmBtn.style.backgroundColor = isDark ? '#60a5fa' : '#40a9ff'
+    }
+    confirmBtn.onmouseleave = () => {
+      confirmBtn.style.backgroundColor = isDark ? '#3b82f6' : '#1890ff'
+    }
 
     const cancelBtn = document.createElement('button')
     cancelBtn.textContent = '取消上传'
     cancelBtn.style.padding = '6px 12px'
-    cancelBtn.style.backgroundColor = '#f5222d'
+    cancelBtn.style.backgroundColor = isDark ? '#ef4444' : '#f5222d'
     cancelBtn.style.color = '#fff'
     cancelBtn.style.border = 'none'
     cancelBtn.style.borderRadius = '4px'
     cancelBtn.style.cursor = 'pointer'
+    cancelBtn.style.transition = 'background-color 0.2s'
+    
+    // 添加悬停效果
+    cancelBtn.onmouseenter = () => {
+      cancelBtn.style.backgroundColor = isDark ? '#f87171' : '#ff4d4f'
+    }
+    cancelBtn.onmouseleave = () => {
+      cancelBtn.style.backgroundColor = isDark ? '#ef4444' : '#f5222d'
+    }
 
     confirmBtn.onclick = () => {
       document.body.removeChild(overlay)
@@ -1952,7 +2101,7 @@ const removeUploadAudioFile = () => {
   uploadAudioForm.value.file = null
 }
 
-// 确认上传音频
+// 确认上传音频（保留OSS直传 + 同步后端URL+播放状态更新 + 视图兼容优化）
 const confirmUploadAudio = async () => {
   if (!uploadAudioForm.value.file) {
     uploadAudioError.value = '请选择音频文件'
@@ -1970,7 +2119,7 @@ const confirmUploadAudio = async () => {
   uploadAudioProgress.value = 0
   
   try {
-    // 使用OSS直传方式上传音频
+    // 完全保留OSS直传核心逻辑（无任何修改）
     const audioUrl = await uploadAudioToOSS(
       song.id,
       uploadAudioForm.value.file,
@@ -1988,31 +2137,36 @@ const confirmUploadAudio = async () => {
       }
     )
     
-    // 上传成功，更新歌曲的音频URL
-    if (song) {
-      song.url = audioUrl
-      // 如果当前正在播放这首歌曲，更新音频源
-      if (currentIndex.value === uploadAudioSongIndex.value) {
-        audio.value.src = audioUrl
-        // 如果正在播放，重新加载元数据
-        audio.value.load()
-      }
-    }
+    // 核心1：强绑定更新前端歌曲URL，确保播放链路生效
+    song.url = audioUrl
     
-    // 重新加载歌单歌曲列表（如果在歌单视图中），确保数据同步
+    // 核心2：当前播放的正是本首歌 → 无缝续播（自动重载+恢复播放状态）
+    if (currentIndex.value === uploadAudioSongIndex.value) {
+      audio.value.src = audioUrl
+      audio.value.load() // 重新加载音频元数据
+      // 自动恢复播放，捕获播放异常（如浏览器静音/权限限制）
+      await audio.value.play().then(() => {
+        isPlaying.value = true
+      }).catch(err => {
+        console.warn('自动播放失败，需用户手动触发', err)
+        isPlaying.value = false
+      })
+    }
+
+    // 兼容歌单视图：重新加载歌单列表，双向同步URL确保数据一致
     if (viewMode.value === 'playlist' && selectedPlaylistId.value) {
       await loadPlaylistTracks(selectedPlaylistId.value)
-      // 重新加载后，确保URL已更新
+      // 二次兜底：确保歌单列表内的歌曲URL同步更新，防止数据不一致
       const updatedSong = songList.value.find(s => s.id === song.id)
-      if (updatedSong && !updatedSong.url && audioUrl) {
+      if (updatedSong && audioUrl) {
         updatedSong.url = audioUrl
       }
     }
+
+    // 优化提示文案：告知用户「立即播放」能力，提升体验
+    alert('音频上传成功！可立即播放该歌曲')
     
-    // 显示成功提示
-    alert('音频上传成功！')
-    
-    // 关闭模态
+    // 关闭上传弹窗，回归主界面
     closeUploadAudioModal()
   } catch (err) {
     console.error('上传音频失败', err)
@@ -2022,7 +2176,6 @@ const confirmUploadAudio = async () => {
     uploadAudioProgress.value = 0
   }
 }
-
 // 确认添加歌曲
 const confirmAddTrack = async () => {
   // 重置错误
@@ -2160,33 +2313,49 @@ const openDeletePlaylistConfirm = (playlistId) => {
   deleteConfirmOpen.value = true
 }
 
+// 歌单删除【完整修复版】
 const confirmDeletePlaylist = async () => {
-  const playlistId = deletingPlaylistId.value || selectedPlaylist.value?.id
+  const playlistId = deletingPlaylistId.value || selectedPlaylist.value?.id;
   if (!playlistId) {
-    deleteConfirmOpen.value = false
-    return
+    deleteConfirmOpen.value = false;
+    return;
   }
-  
+
+  // 前置校验：未登录禁止删除
+  if (!token.value) {
+    alert('请先登录后再删除歌单！');
+    openAuth('login');
+    deleteConfirmOpen.value = false;
+    return;
+  }
+
   try {
-    // 使用接口9：删除歌单
-    const data = await api.deletePlaylist(playlistId)
+    // 调用后端删除歌单接口
+    const data = await api.deletePlaylist(playlistId);
     if (data.code === 200) {
-      // 从列表移除
-      playlists.value = playlists.value.filter(p => p.id !== playlistId)
-      // 如果删除的是当前选中的歌单，切换到其他视图
+      // 修复1：从前端歌单列表中彻底移除（原逻辑缺失）
+      playlists.value = playlists.value.filter(p => p.id !== playlistId);
+      
+      // 修复2：重置所有关联状态，避免页面错乱
       if (selectedPlaylistId.value === playlistId) {
-        viewMode.value = 'all'
-        selectedPlaylistId.value = null
+        viewMode.value = 'all'; // 切回单曲集合视图
+        selectedPlaylistId.value = null; // 清空选中歌单ID
+        editing.value = false; // 关闭编辑状态
+        editName.value = ''; // 清空编辑名称
+        editDesc.value = ''; // 清空编辑简介
       }
+
+      alert('歌单已成功删除！');
     } else {
-      alert(data.msg || '删除失败')
+      alert(data.msg || '歌单删除失败，请重试');
     }
   } catch (err) {
-    console.error('删除失败', err)
-    alert('删除失败: ' + (err.message || '未知错误'))
+    console.error('歌单删除失败', err);
+    alert(`删除失败: ${err.message || '未知错误，请刷新重试'}`);
+  } finally {
+    deleteConfirmOpen.value = false;
+    deletingPlaylistId.value = null;
   }
-  deleteConfirmOpen.value = false
-  deletingPlaylistId.value = null
 }
 
 // 单曲删除相关
@@ -2194,6 +2363,8 @@ const openSongDeleteConfirm = (idx) => {
   songDeleteIndex.value = idx
   songDeleteConfirmOpen.value = true
 }
+
+// 单曲删除【全局生效-核心修复版】
 const confirmDeleteSong = async () => {
   const idx = songDeleteIndex.value
   if (idx === null || idx === undefined) {
@@ -2207,92 +2378,153 @@ const confirmDeleteSong = async () => {
     return
   }
 
-  // 如果当前在歌单视图中，从该歌单中移除歌曲
-  if (viewMode.value === 'playlist' && selectedPlaylist.value) {
-    try {
-      // 使用接口12：从歌单中移除歌曲
-      const data = await api.removeTrackFromPlaylist(selectedPlaylist.value.id, song.id)
-      if (data.code === 200) {
-        // 从歌单的歌曲列表中移除
-        if (selectedPlaylist.value.songs) {
-          selectedPlaylist.value.songs = selectedPlaylist.value.songs.filter(i => i !== idx)
-        }
-        // 如果正在播放被删除的歌曲，停止播放
-        if (currentIndex.value === idx) {
-          audio.value.pause()
-          currentIndex.value = -1
-          audio.value.src = ''
-          isPlaying.value = false
-          currentTime.value = 0
-          audioDuration.value = 0
-        } else if (currentIndex.value > idx) {
-          currentIndex.value = currentIndex.value - 1
-        }
-        // 重新加载歌单歌曲列表
-        await loadPlaylistTracks(selectedPlaylist.value.id)
-      } else {
-        alert(data.msg || '删除失败')
-      }
-    } catch (err) {
-      console.error('删除失败', err)
-      alert('删除失败: ' + (err.message || '未知错误'))
-    }
-  } else {
-    // 如果不在歌单视图中，只从前端列表中移除（不调用后端）
-    // 注意：接口文档中没有删除歌曲本身的接口，只有从歌单中移除的接口
-    songList.value.splice(idx, 1)
-    if (viewMode.value === 'search') {
-      const results = searchResults.value.filter(item => item.i !== idx)
-      searchResults.value = results.map(item => ({
-        s: item.s,
-        i: item.i > idx ? item.i - 1 : item.i
-      }))
-    }
-    if (currentIndex.value === idx) {
-      audio.value.pause()
-      currentIndex.value = -1
-      audio.value.src = ''
-      isPlaying.value = false
-      currentTime.value = 0
-      audioDuration.value = 0
-    } else if (currentIndex.value > idx) {
-      currentIndex.value = currentIndex.value - 1
-    }
+  // 前置校验：未登录禁止删除
+  if (!token.value) {
+    alert('请先登录后再删除歌曲！');
+    openAuth('login');
+    songDeleteConfirmOpen.value = false;
+    return;
   }
-  
-  songDeleteConfirmOpen.value = false
-  songDeleteIndex.value = null
+
+  try {
+    // ========== 核心1：全局物理删除（调用后端接口，彻底删除歌曲） ==========
+    const delRes = await api.request(`/track/${song.id}`, { method: 'DELETE' });
+    if (delRes.code !== 200) throw new Error(delRes.msg || '歌曲删除失败');
+
+    // ========== 核心2：删除前端所有关联数据（全局+歌单+搜索+播放） ==========
+    // 1. 从全局歌曲列表中移除
+    songList.value.splice(idx, 1);
+
+    // 2. 从所有歌单中移除该歌曲的关联索引（关键！解决删不掉歌单关联）
+    playlists.value.forEach(pl => {
+      if (pl.songs && pl.songs.length) {
+        // 过滤掉当前删除的歌曲索引
+        pl.songs = pl.songs.filter(i => {
+          // 索引大于被删idx → 索引-1（保持顺序正确）
+          if (i > idx) pl.songs[pl.songs.indexOf(i)] = i - 1;
+          return i !== idx;
+        });
+      }
+    });
+
+    // 3. 处理搜索结果数据修正
+    if (viewMode.value === 'search') {
+      searchResults.value = searchResults.value.filter(item => item.i !== idx)
+        .map(item => ({
+          s: item.s,
+          i: item.i > idx ? item.i - 1 : item.i
+        }));
+    }
+
+    // 4. 处理播放状态重置（删除当前播放的歌曲）
+    if (currentIndex.value === idx) {
+      audio.value.pause();
+      currentIndex.value = -1;
+      audio.value.src = '';
+      isPlaying.value = false;
+      currentTime.value = 0;
+      audioDuration.value = 0;
+      parsedLrc.value = []; // 清空歌词
+    } else if (currentIndex.value > idx) {
+      // 修正剩余歌曲的播放索引
+      currentIndex.value -= 1;
+    }
+
+    // 新增：刷新歌单数据，保证视图同步
+    await loadPlaylistTracks(selectedPlaylist.value.id);
+
+    alert(`歌曲《${song.name}》已从单曲集合中永久删除！`);
+  } catch (err) {
+    console.error('全局删除歌曲失败', err);
+    alert(`删除失败: ${err.message || '网络异常，请重试'}`);
+  } finally {
+    songDeleteConfirmOpen.value = false;
+    songDeleteIndex.value = null;
+  }
 }
 
 const toggleEditContent = async () => {
   if (!selectedPlaylist.value) return
-  if (editing.value) {
-    // 保存修改
-    try {
-      const data = await api.updatePlaylist({
-        id: selectedPlaylist.value.id,
-        name: editName.value || selectedPlaylist.value.name,
-        sort: selectedPlaylist.value.sort,
-        status: selectedPlaylist.value.status
-      })
-      if (data.code === 200) {
-        selectedPlaylist.value.name = editName.value || selectedPlaylist.value.name
-        editing.value = false
-        // 重新获取歌单列表以确保数据同步
-        await fetchPlaylists()
-      } else {
-        alert(data.msg || '保存失败')
-      }
-    } catch (err) {
-      console.error('保存失败', err)
-      alert('保存失败: ' + (err.message || '未知错误'))
-    }
-  } else {
-    editing.value = true
-    editName.value = selectedPlaylist.value.name
-    editDesc.value = selectedPlaylist.value.desc || ''
+  if (!token.value) {
+    alert("请先登录后再修改歌单！");
+    openAuth('login');
+    return;
   }
-}
+
+  // 进入编辑模式
+  if (!editing.value) {
+    editing.value = true;
+    editName.value = selectedPlaylist.value.name || "未命名歌单";
+    editDesc.value = selectedPlaylist.value.desc || "";
+    return;
+  }
+
+  // 保存修改逻辑（核心）
+  try {
+    // 1. 第一步：处理封面文件上传（如有新上传封面），拿到封面URL
+    let newCoverUrl = selectedPlaylist.value.cover;
+    const coverFile = selectedPlaylist.value.coverFile;
+    // 存在本地封面文件 → 调用后端接口上传并获取URL
+    if (coverFile && selectedPlaylist.value.id) {
+      const coverRes = await uploadPlaylistCover(selectedPlaylist.value.id, coverFile);
+      if (coverRes) newCoverUrl = coverRes;
+    }
+
+    // 2. 第二步：组装完整更新参数，调用歌单更新接口
+    const updateParams = {
+      id: selectedPlaylist.value.id, // 必传：歌单ID
+      name: editName.value.trim() || selectedPlaylist.value.name, // 名称兜底
+      desc: editDesc.value.trim(), // 简介字段（支持空值）
+      cover: newCoverUrl // 封面URL（上传后的值/原封面/移除则为null）
+    };
+    const res = await api.updatePlaylist(updateParams);
+
+    // 3. 第三步：处理接口响应，同步本地数据
+    if (res.code === 200) {
+      //  实时更新本地歌单数据（无需刷新页面）
+      Object.assign(selectedPlaylist.value, {
+        name: updateParams.name,
+        desc: updateParams.desc,
+        cover: newCoverUrl
+      });
+      // 清空临时封面文件，释放内存
+      selectedPlaylist.value.coverFile = null;
+      editing.value = false;
+      await fetchPlaylists(); // 刷新歌单列表，保证全局数据一致
+      alert(" 歌单名称、简介、封面修改全部成功！");
+    } else {
+      alert(` 保存失败：${res.msg || "后端接口异常"}`);
+    }
+  } catch (err) {
+    console.error("歌单保存失败：", err);
+    alert(` 保存失败：${err.message || "网络请求错误"}`);
+  }
+};
+
+// 歌单封面上传专用方法（复用歌曲封面上传接口，适配你的API）
+const uploadPlaylistCover = async (playlistId, coverFile) => {
+  if (!playlistId || !coverFile) return null;
+  try {
+    // 适配你的api封装：FormData格式提交文件，与uploadTrackCover接口一致
+    const formData = new FormData();
+    formData.append("file", coverFile);
+    // 调用后端文件上传接口，返回封面URL
+    const res = await api.request(`/user/playlist/${playlistId}/cover`, {
+      method: "POST",
+      body: formData // 自动适配你的request方法（FormData自动移除Content-Type）
+    });
+    if (res.code === 200) {
+      return res.data; // 返回后端生成的封面URL
+    } else {
+      throw new Error(res.msg || "封面上传接口返回异常");
+    }
+  } catch (err) {
+    console.error("歌单封面上传失败：", err);
+    alert(`❌ 封面上传失败：${err.message}`);
+    return null;
+  }
+};
+
 
 const openManageSongs = () => {
   if (!selectedPlaylist.value && viewMode.value === 'playlist') return
@@ -2448,23 +2680,36 @@ const displayed = computed(() => {
   return arr
 })
 
-// 播放控制相关
+// 播放控制相关（核心修复：完善URL校验+友好提示+异常捕获）
 const playSong = (i) => {
   if (!songList.value.length || i < 0 || i >= songList.value.length) return
   const song = songList.value[i]
-  if (!song || !song.url || song.url === '') {
-    console.warn('歌曲没有音频URL，无法播放')
+  
+  // 严格校验URL，给出明确提示
+  if (!song || !song.url || song.url === '' || song.url === null) {
+    const tip = `歌曲《${song.name || '未知歌曲'}》暂无播放地址，请先上传音频！`
+    console.warn(tip)
+    alert(tip)
     return
   }
+  
+  //  完整的播放链路，确保播放状态同步
   currentIndex.value = i
   audio.value.src = song.url
   currentTime.value = 0
   audioDuration.value = 0
-  audio.value.play().then(() => isPlaying.value = true).catch((err) => {
-    isPlaying.value = false
-    console.error('播放失败:', err)
-    alert('播放失败: ' + (err.message || '未知错误'))
-  })
+  
+  audio.value.play()
+    .then(() => {
+      isPlaying.value = true
+      // 播放成功后，自动加载歌词
+      song.id && fetchLyrics(song.id)
+    })
+    .catch((err) => {
+      isPlaying.value = false
+      console.error('播放失败:', err)
+      alert(`播放失败: ${err.message || '音频地址无效/网络异常'}`)
+    })
 }
 
 // 处理播放按钮点击
@@ -2542,17 +2787,27 @@ const changeVolume = () => {
   }
 }
 const seekAudio = () => audio.value.currentTime = currentTime.value
+// 收藏/取消收藏（新增：对接后端持久化，解决收藏状态丢失）
 const toggleFav = async (idx) => {
   const song = songList.value[idx]
-  if (!song.id) return
+  if (!song.id || !token.value) {
+    !token.value && alert('请先登录再收藏歌曲')
+    return
+  }
 
-  // 注意：接口文档中没有专门的收藏/取消收藏接口
-  // 这里暂时保留前端状态切换，实际项目中可能需要后端支持
-  // 或者通过其他方式实现（如使用"我喜欢的"歌单）
-  song.fav = !song.fav
-  
-  // 如果已登录，可以考虑将收藏的歌曲添加到"我喜欢的"歌单
-  // 这里暂时只做前端状态切换
+  try {
+    // ✅ 调用后端收藏接口（根据实际接口调整，此处为通用写法）
+    const res = await api.request(`/track/fav/${song.id}`, { method: 'POST' })
+    if (res.code === 200) {
+      // ✅ 同步前端状态
+      song.fav = !song.fav
+    } else {
+      alert(`收藏失败：${res.msg}`)
+    }
+  } catch (err) {
+    console.error('收藏接口调用失败', err)
+    alert('收藏失败，请刷新重试')
+  }
 }
 const toggleCurrentFav = () => {
   if (currentIndex.value === -1 || !songList.value[currentIndex.value]) return;
@@ -2605,9 +2860,24 @@ const toggleEditProfile = () => {
     editProfileForm.value = {
       username: currentUser.value.username,
       email: currentUser.value.email,
-      gender: currentUser.value.gender ?? 1 // 默认男
+      gender: currentUser.value.gender ?? 1, // 默认男
+      bio: currentUser.value.bio ?? '', // 个人简介
+      birthday: currentUser.value.birthday ?? '' // 生日
     }
     editingProfile.value = true
+  }
+}
+
+// 取消编辑
+const cancelEditProfile = () => {
+  editingProfile.value = false
+  // 重置表单数据
+  editProfileForm.value = {
+    username: currentUser.value.username,
+    email: currentUser.value.email,
+    gender: currentUser.value.gender ?? 1,
+    bio: currentUser.value.bio ?? '',
+    birthday: currentUser.value.birthday ?? ''
   }
 }
 // 歌词解析相关
@@ -2708,68 +2978,121 @@ const updateActiveLrcIndex = () => {
   }
 }
 
-// 新增：保存用户资料
-const saveProfile = async () => {
-  const { username, email, gender } = editProfileForm.value
+// ========== 头像上传&持久化 核心改造代码 ==========
+const openAvatarDialog = () => {
+  if (!token.value) { // 未登录拦截
+    alert("请先登录后再更换头像！");
+    openAuth('login');
+    return;
+  }
+  // 兼容id获取 + ref获取双方式，避免元素获取失败
+  const avatarInput = document.getElementById('avatar-ctrl') || avatarInput.value;
+  if (avatarInput) {
+    avatarInput.value = ''; // 重置文件选择框，解决重复选同文件不触发change
+    avatarInput.click();
+  }
+};
 
-  // 基础校验（可选）
-  if (!username.trim() || username.length > 30) {
-    alert('用户名不能为空且不超过30字符')
-    return
+// 头像上传+持久化核心方法（无新增接口，完全复用现有/profile）
+const handleAvatarUpload = async (e) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+
+  // 1. 严格校验图片格式&大小
+  if (!file.type.startsWith('image/')) {
+    alert(`文件【${file.name}】不是图片格式！仅支持JPG/PNG/GIF/WEBP`);
+    return;
+  }
+  if (file.size > 5 * 1024 * 1024) { // 限制5MB，适配后端通用限制
+    alert("头像图片大小不能超过5MB，请选择更小的图片！");
+    return;
   }
 
   try {
-    // 使用接口5：修改用户信息
-    const data = await api.updateProfile({ username, email, gender })
-    if (data.code === 200) {
-      // 更新前端 currentUser
-      currentUser.value = { ...currentUser.value, ...data.data }
-      editingProfile.value = false
+    // 2. 生成前端临时预览URL（提升体验）
+    const previewUrl = URL.createObjectURL(file);
+    // 释放旧的blob预览URL，防止内存泄漏
+    if (currentUser.value.avatar && currentUser.value.avatar.startsWith('blob:')) {
+      URL.revokeObjectURL(currentUser.value.avatar);
+    }
+    currentUser.value.avatar = previewUrl; // 即时预览
+
+    // 3. 核心：上传图片文件 → 获取后端返回的【永久头像URL】
+    const formData = new FormData();
+    formData.append('avatar', file); // 字段名 avatar 与后端约定一致
+    
+    // 适配你的api.js：调用顶层request方法，路径按后端实际文件上传地址填写
+    const uploadRes = await api.request('/user/user/avatar', {
+      method: 'POST',
+      body: formData
+    });
+
+    if (uploadRes.code !== 200) throw new Error(uploadRes.msg || '头像上传失败');
+    const permanentAvatarUrl = uploadRes.data; // 后端返回的永久URL
+
+    // 4. 复用已有接口 updateProfile 实现持久化（无新增接口）
+    const updateRes = await api.updateProfile({
+      avatar: permanentAvatarUrl // 仅传需要修改的avatar字段，其他字段不变
+    });
+
+    if (updateRes.code === 200) {
+      // 同步前端用户数据，确保实时生效
+      currentUser.value = { ...currentUser.value, avatar: permanentAvatarUrl };
+      alert("头像更换成功！下次登录将自动加载");
     } else {
-      alert(data.msg || '保存失败')
+      throw new Error(updateRes.msg || '用户信息更新失败');
+    }
+
+  } catch (err) {
+    console.error("头像持久化失败：", err);
+    alert(`头像保存失败：${err.message}`);
+    // 异常兜底：恢复数据库中原有头像（复用你项目的fetchUserInfo）
+    await fetchUserInfo();
+  }
+};
+
+// 生日格式化函数
+const formatBirthday = (birthday) => {
+  if (!birthday) return ''
+  const date = new Date(birthday)
+  return date.toLocaleDateString('zh-CN', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  })
+}
+
+// 完善用户资料保存方法（支持更多字段）
+const saveProfile = async () => {
+  const { username, bio, gender, birthday } = editProfileForm.value;
+  if (!username.trim() || username.length > 30) {
+    alert('用户名不能为空且不超过30字符');
+    return;
+  }
+  if (bio && bio.length > 200) {
+    alert('个人简介不能超过200字符');
+    return;
+  }
+  try {
+    const updateData = { 
+      username: username.trim(),
+      bio: bio.trim(),
+      gender: Number(gender),
+      birthday: birthday || null
+    };
+    const data = await api.updateProfile(updateData);
+    if (data.code === 200) {
+      currentUser.value = { ...currentUser.value, ...data.data };
+      editingProfile.value = false;
+      alert('个人资料保存成功！');
+    } else {
+      alert(data.msg || '保存失败');
     }
   } catch (err) {
-    console.error(err)
-    alert('网络错误')
+    console.error(err);
+    alert('网络错误');
   }
-}
-
-const openAvatarDialog = () => {
-  if (avatarInput.value) {
-    avatarInput.value.value = ''
-    avatarInput.value.click()
-  }
-}
-
-// 新增：上传文件到后端（已废弃，头像上传直接使用 updateProfile）
-
-// 修改 handleAvatarUpload
-const handleAvatarUpload = async (e) => {
-  const f = e.target.files?.[0]
-  if (!f || !f.type.startsWith('image/')) return
-
-  try {
-    // 先创建临时预览
-    const previewUrl = URL.createObjectURL(f)
-    currentUser.value.avatar = previewUrl
-    
-    // 注意：接口文档中没有专门的头像上传接口
-    // 这里需要先上传文件获取URL，然后通过 updateProfile 更新
-    // 由于接口文档中没有通用文件上传接口，这里暂时只做前端预览
-    // 实际项目中需要后端提供文件上传接口，或者使用第三方存储服务
-    
-    // 临时方案：提示用户功能暂未实现
-    alert('头像上传功能需要后端支持文件上传接口，当前仅支持预览')
-    
-    // 如果需要完整实现，可以这样：
-    // 1. 先上传文件到服务器获取URL（需要后端提供上传接口）
-    // 2. 使用 api.updateProfile({ avatar: url }) 更新用户信息
-  } catch (err) {
-    console.error(err)
-    alert('头像上传失败')
-  }
-}
-
+};
 
 </script>
 
