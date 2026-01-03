@@ -1,19 +1,73 @@
-# `Name`
+# `Auris` - 后端项目
 
 ## 项目简介
 
-xxx
+Auris 后端是一个基于 Spring Boot 2.6.13 构建的 RESTful API 服务，提供音乐播放器所需的后端功能，包括用户管理、音乐管理、歌单管理、播放历史等核心功能。
+
+### 核心功能
+
+- 👤 **用户管理**：用户注册、登录、JWT 认证
+- 🎵 **音乐管理**：音乐文件上传、元数据管理、音乐信息查询
+- 📋 **歌单管理**：创建、编辑、删除歌单，歌曲添加和排序
+- 📊 **播放历史**：记录用户播放历史
+- 🎤 **歌词管理**：歌词上传和管理
+- ☁️ **文件存储**：集成阿里云 OSS 进行文件存储
 
 ## 系统架构图
 
-xxx
+```
+┌─────────────────────────────────────┐
+│      Spring Boot 应用层             │
+│  ┌──────────┐  ┌──────────┐        │
+│  │Controller│  │ Service  │        │
+│  └────┬─────┘  └────┬─────┘        │
+│       │             │               │
+│  ┌────▼─────────────▼─────┐        │
+│  │    MyBatis Plus         │        │
+│  └────┬────────────────────┘        │
+└───────┼─────────────────────────────┘
+        │
+   ┌────┴────┬──────────┬──────────┐
+   │         │          │          │
+┌──▼──┐  ┌──▼──┐  ┌────▼────┐ ┌───▼───┐
+│PostgreSQL│ │Redis│  │Aliyun OSS│ │其他服务│
+└─────────┘ └────┘  └─────────┘ └───────┘
+```
 
 ## 项目结构说明
 
-xxx
+```
+backend/
+├── auris-common/              # 公共模块
+│   └── src/main/java/top/hazenix/auris/
+│       ├── constant/          # 常量定义
+│       ├── context/           # 上下文（如用户上下文）
+│       ├── enumeration/       # 枚举类
+│       ├── properties/        # 配置属性类
+│       ├── result/            # 统一返回结果
+│       └── utils/             # 工具类（JWT、OSS、HTTP等）
+├── auris-pojo/                # 实体类模块
+│   └── src/main/java/top/hazenix/auris/
+│       ├── dto/               # 数据传输对象
+│       ├── entity/            # 实体类（User、Track、Playlist等）
+│       ├── handler/           # 异常处理器
+│       ├── query/             # 查询对象
+│       └── vo/                # 视图对象
+├── auris-server/              # 服务模块
+│   └── src/main/java/top/hazenix/auris/
+│       ├── annotation/        # 自定义注解
+│       ├── aspect/            # AOP 切面
+│       ├── config/            # 配置类（CORS、WebMvc等）
+│       ├── controller/        # 控制器层
+│       │   └── user/          # 用户端接口
+│       ├── interceptor/       # 拦截器（JWT等）
+│       ├── mapper/            # MyBatis Mapper 接口
+│       └── service/           # 服务层
+│           └── impl/          # 服务实现类
+└── pom.xml                     # Maven 父 POM
+```
 
 ## 软件架构
-xxx
 
 ### `Java`技术栈
 
@@ -25,48 +79,17 @@ https://github.com/alibaba/spring-cloud-alibaba/wiki/%E7%89%88%E6%9C%AC%E8%AF%B4
 
 | 技术                     | 说明                   | 版本            | 备注                                                         |
 | ------------------------ | ---------------------- |---------------| ------------------------------------------------------------ |
-| `Spring`                 | 容器                   | 5.2.15        | https://spring.io/                                           |
-| `Spring Web MVC`         | `MVC`框架              | 5.2.15        | https://docs.spring.io/spring/docs/current/spring-framework-reference/web.html |
-| `Beanvalidation`         | 实体属性校验           | 2.0.2         | https://beanvalidation.org/2.0-jsr380/<br>https://www.baeldung.com/spring-boot-bean-validation |
-| `MyBatis`                | `ORM`框架              | 3.5.7         | http://www.mybatis.org/mybatis-3/zh/index.html               |
-| `MyBatis Plus`           | `MyBatis`的增强工具    | 3.4.3.4       | https://baomidou.com/                                        |
-| `MyBatis Plus Generator` | 代码生成器             | 3.5.1         | https://github.com/baomidou/generator                        |
-| `Druid`                  | 数据库连接池           | 1.2.8         | https://github.com/alibaba/druid                             |
-| `Lombok`                 | 实体类增加工具         | 1.18.20       | https://github.com/rzwitserloot/lombok                       |
-| `Hutool`                 | Java工具类库           | 5.8.3         | https://hutool.cn/docs/#/                                    |
-| `Knife4j`                | 接口描述语言           | 2.0.8         | https://gitee.com/xiaoym/knife4j                             |
-| `Nimbus JOSE JWT`        | `JSON Web Token`       | 8.21          | https://bitbucket.org/connect2id/nimbus-jose-jwt/wiki/Home   |
 | `Spring Boot`            | Spring快速集成脚手架   | 2.6.13        | https://spring.io/projects/spring-boot                       |
-| `Spring Cloud`           | 微服务框架             | `Hoxton.SR12` | https://spring.io/projects/spring-cloud                      |
-| `Spring Cloud Alibaba`   | 微服务框架             | 2.2.8         | https://github.com/alibaba/spring-cloud-alibaba/wiki         |
-| `Spring Cloud Security`  | 认证和授权框架         | 2.2.5         | https://spring.io/projects/spring-cloud-security             |
-| `Sentinel`               | 分布式系统的流量防卫兵 | 1.8.4         | https://sentinelguard.io/zh-cn/                              |
-| `Seata`                  | 分布式事务解决方案     | 1.5.1         | https://seata.io/zh-cn/                                      |
-| `MapStruct`              | 实体类映射代码生成器   | `1.5.3.Final` | https://mapstruct.org/                                       |
+| `MyBatis Plus`           | `MyBatis`的增强工具    | 3.5.3.1       | https://baomidou.com/                                        |
+| `Lombok`                 | 实体类增加工具         | 1.18.20       | https://github.com/rzwitserloot/lombok                       |
+| `Knife4j`                | 接口描述语言           | 3.0.2         | https://gitee.com/xiaoym/knife4j                             |
+| `Nimbus JOSE JWT`        | `JSON Web Token`       | 9.40          | https://bitbucket.org/connect2id/nimbus-jose-jwt/wiki/Home   |
+| `PostgreSQL Driver`      | PostgreSQL 数据库驱动  | 42.3.1        | https://jdbc.postgresql.org/                                 |
+| `AspectJ`                | AOP 框架               | 1.9.4         | https://www.eclipse.org/aspectj/                             |
+| `Fastjson`               | JSON 处理库            | 1.2.76        | https://github.com/alibaba/fastjson                          |
+| `JJWT`                   | JWT 处理库             | 0.9.1         | https://github.com/jwtk/jjwt                                 |
+| `Aliyun OSS SDK`         | 阿里云 OSS SDK         | 3.17.4        | https://github.com/aliyun/aliyun-oss-java-sdk               |
 
-#### 后端扩展技术栈
-
-版本匹配参考：
-
-https://docs.spring.io/spring-data/elasticsearch/docs/current/reference/html/#preface.requirements
-
-https://docs.spring.io/spring-data/mongodb/docs/current/reference/html/#requirements
-
-| 技术                       | 说明                   | 版本   | 备注                                                         |
-| -------------------------- | ---------------------- | ------ | ------------------------------------------------------------ |
-| `EasyExcel`                | Excel报表              | 3.0.5  | https://github.com/alibaba/easyexcel                         |
-| `RocketMQ`                 | 消息队列中间件         | 4.9.3  | https://github.com/alibaba/spring-cloud-alibaba/wiki/RocketMQ |
-| `WebSocket`                | 及时通讯服务           | 5.2.15 | https://docs.spring.io/spring-framework/docs/5.3.15/reference/html/web.html#websocket |
-| `FastDFS`                  | `dfs`客户端            | 2.0.1  | https://gitee.com/zero-awei/fastdfs-spring-boot-starter      |
-| `Elasticsearch`            | 分布式搜索和分析引擎   | 7.6.2  | https://www.elastic.co/guide/en/elasticsearch/reference/7.6/index.html |
-| `LogStash`                 | 日志收集工具           | 7.6.2  | https://www.elastic.co/guide/en/logstash/7.6/index.html      |
-| `Kibana`                   | 日志可视化查看工具     | 7.6.2  | https://www.elastic.co/guide/en/kibana/7.6/index.html        |
-| `logstash-logback-encoder` | `Logstash`日志收集插件 | 6.6    | https://github.com/logfellow/logstash-logback-encoder/tree/logstash-logback-encoder-6.6 |
-| `spring-boot-admin`        | 服务管理和监控面板     | 2.3.1  | https://github.com/codecentric/spring-boot-admin             |
-| `EasyEs`                   | `ES ORM`开发框架       | 1.0.3  | https://www.easy-es.cn/                                      |
-| `spring-data-mongodb`      | `Spring`集成`MongoDB`  | 3.0.9  | https://docs.spring.io/spring-data/mongodb/docs/3.0.9.RELEASE/reference/html/#preface |
-| `AJ-Captcha`               | 验证码插件             | 1.3.0  | https://ajcaptcha.beliefteam.cn/captcha-doc/                 |
-| `x-easypdf`                | `pdf`插件              | 2.12.2 | https://gitee.com/dromara/x-easypdf                          |
 
 
 ## 环境要求
@@ -105,41 +128,59 @@ https://docs.spring.io/spring-data/mongodb/docs/current/reference/html/#requirem
 
 ### 服务器环境
 
-| 依赖环境    | 版本                                                         | 备注                                                         |
-| ----------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
-| `Anolis OS` | `8.6GA`                                                      | https://openanolis.cn/anolisos                               |
-| `Docker`    | latest                                                       | https://www.docker.com/                                      |
-| `MySQL`     | 8.0.20                                                       | https://www.mysql.com/cn/                                    |
-| `Redis`     | 6.2.7                                                        | https://redis.io/                                            |
-| `Nacos`     | 2.1.0                                                        | https://nacos.io/zh-cn/docs/quick-start-docker.html          |
-| `Sentinel`  | 1.8.4                                                        | https://github.com/alibaba/Sentinel/releases                 |
-| `Seata`     | 1.5.1                                                        | https://github.com/seata/seata                               |
-| `RocketMQ`  | 4.9.3                                                        | https://rocketmq.apache.org/                                 |
-| `Nginx`     | latest                                                       | https://nginx.org/en/                                        |
-| `FastDFS`   | [V6.07](https://github.com/happyfish100/fastdfs/releases/tag/V6.07) | https://gitee.com/fastdfs100                                 |
-| `ELK`       | 7.6.2                                                        | https://www.elastic.co/guide/en/elastic-stack/7.6/index.html |
-| `MongoDB`   | 4.4.17                                                       | https://www.mongodb.com/try/download/community               |
-| `Jenkins`   | latest                                                       | https://www.jenkins.io/zh/doc/book/installing/               |
+> | 依赖环境    | 版本                                                         | 备注                                                         |
+> | ----------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
+> | `Anolis OS` | `8.6GA`                                                      | https://openanolis.cn/anolisos                               |
+> | `Docker`    | latest                                                       | https://www.docker.com/                                      |
+> | `PostgreSQL` | 14.0+                                                      | https://www.postgresql.org/                                 |
+> | `Redis`     | 6.2.7                                                        | https://redis.io/                                            |
+> | `Nginx`     | latest                                                       | https://nginx.org/en/                                        |
+>
+
+## 快速开始
+
+### 环境要求
+
+- JDK 17+
+- Maven 3.6+
+- PostgreSQL 14.0+
+- Redis 6.2+
+
+### 配置说明
+
+1. 修改 `auris-server/src/main/resources/application.yml` 中的数据库和 Redis 配置
+2. 配置阿里云 OSS 相关参数（用于文件存储）
+3. 配置 JWT 相关参数
+
+### 运行项目
+
+xxApplication启动类  或
+
+```bash
+# 编译项目
+mvn clean package
+
+# 运行服务
+cd auris-server
+java -jar target/auris-server-1.0.0-SNAPSHOT.jar
+```
+
+### API 文档
+
+启动服务后，访问 Swagger 文档：
+- 开发环境：http://localhost:8080/doc.html
+- 生产环境：https://auris.hazenix.top/doc.html
 
 ## 部分功能预览图
 
-![01](backend/documents/00、preview-pic/01.png)
+> （预览图位于项目根目录 `documents/` 目录下，如有需要可添加预览图）
+>
 
-![02](backend/documents/00、preview-pic/02.png)
 
-![03](backend/documents/00、preview-pic/03.png)
-
-![04](backend/documents/00、preview-pic/04.png)
-
-![05](backend/documents/00、preview-pic/05.png)
-
-![06](backend/documents/00、preview-pic/06.png)
-
-![07](backend/documents/00、preview-pic/07.png)
 
 ## 特别鸣谢
 
-`zero-one-psi`的诞生离不开开源软件和社区的支持，感谢以下开源项目及项目维护者：
+`Auris`的诞生离不开开源软件和社区的支持，感谢以下开源项目及项目维护者：
 
 - `spring`：https://github.com/spring-projects
 - `alibaba`：https://github.com/alibaba

@@ -1,13 +1,68 @@
-# `name`
+# `Auris` - 前端项目
 
+## 项目简介
 
+Auris 前端是一个基于 Vue 3 + Vite 构建的现代化音乐播放器 Web 应用。提供直观的用户界面，支持音乐播放、歌单管理、用户认证等功能。
+
+### 核心功能
+
+- 🎵 **音乐播放**：支持本地音乐文件上传和在线音频播放
+- 📋 **歌单管理**：创建、编辑、删除个人歌单，支持歌曲添加和排序
+- 🎨 **用户界面**：响应式设计，支持深色/浅色主题
+- 🔐 **用户认证**：用户登录、注册，JWT Token 认证
+- 📊 **播放控制**：播放/暂停、上一首/下一首、进度控制、音量调节
+- 🎤 **歌词显示**：支持歌词同步显示
 
 ## 系统架构图
 
-
+```
+┌─────────────────────────────────────┐
+│         Vue 3 前端应用              │
+│  ┌──────────┐  ┌──────────┐        │
+│  │  Player  │  │ Landing  │        │
+│  │  页面    │  │  页面    │        │
+│  └────┬─────┘  └────┬─────┘        │
+│       │             │               │
+│  ┌────▼─────────────▼─────┐        │
+│  │    Vue Router 路由      │        │
+│  └────┬────────────────────┘        │
+│       │                             │
+│  ┌────▼────────────────────┐       │
+│  │    API 接口层 (api.js)   │       │
+│  └────┬─────────────────────┘       │
+└───────┼─────────────────────────────┘
+        │ HTTP/HTTPS
+        │
+┌───────▼─────────────────────────────┐
+│      Spring Boot 后端服务            │
+└─────────────────────────────────────┘
+```
 
 ## 项目结构说明
 
+```
+frontend/
+└── music-player/              # Vue 3 音乐播放器前端
+    ├── src/
+    │   ├── views/              # 页面组件
+    │   │   ├── Player.vue      # 播放器主页面
+    │   │   └── Landing.vue     # 登录/注册页面
+    │   ├── components/         # 公共组件
+    │   │   ├── FloatingLines.vue
+    │   │   └── HelloWorld.vue
+    │   ├── router/             # 路由配置
+    │   │   └── index.js
+    │   ├── utils/              # 工具函数
+    │   │   └── ossUpload.js    # OSS 上传工具
+    │   ├── api.js              # API 接口定义
+    │   ├── App.vue             # 根组件
+    │   └── main.js             # 入口文件
+    ├── public/                 # 静态资源
+    ├── server/                 # 本地开发服务器（可选）
+    ├── package.json            # 依赖配置
+    ├── vite.config.js          # Vite 配置
+    └── README.md               # 前端 README
+```
 
 ## 软件架构
 
@@ -17,28 +72,13 @@
 
 #### 核心技术栈
 
-参考
-
 | 技术           | 说明             | 版本                                                         | 备注                                 |
 | -------------- | ---------------- | ------------------------------------------------------------ | ------------------------------------ |
-| `Vue`          | 前端框架         | `v3.x`                                                       | https://v3.vuejs.org/                |
-| `Vue-Router`   | 路由框架         | `v4.x`                                                       | https://next.router.vuejs.org/       |
-| `Pinia`        | 全局状态管理框架 | `v2.x`                                                       | https://pinia.vuejs.org/             |
-| `Axios`        | HTTP中间件       | [v1.7.2](https://github.com/axios/axios/releases/tag/v1.7.2) | https://github.com/axios/axios       |
-| `Element-Plus` | 前端`UI`框架     | `latest`                                                     | https://element-plus.gitee.io/zh-CN/ |
-
-#### 扩展技术栈
-
-| 技术                 | 说明          | 版本   | 备注                                                         |
-| -------------------- | ------------- | ------ | ------------------------------------------------------------ |
-| `ECharts`            | 图表框架      | latest | [`Apache ECharts`](https://echarts.apache.org/handbook/zh/get-started/) |
-| `AJ-Captcha`         | 验证码插件    | 1.3.0  | https://ajcaptcha.beliefteam.cn/captcha-doc/                 |
-| `SheetJS`            | 电子表格插件  | 0.20.2 | https://docs.sheetjs.com/docs/<br>https://docs.sheetjs.com/docs/demos/frontend/vue |
-| `vue-plugin-hiprint` | 打印插件      | 0.0.56 | https://gitee.com/CcSimple/vue-plugin-hiprint                |
-| `wangEditor`         | 富文本编辑器  | v5     | https://www.wangeditor.com/v5/                               |
-| `pdfobject`          | `pdf`预览插件 | 2.3.0  | https://github.com/pipwerks/PDFObject                        |
-| `Vitest`             | 测试框架      | 1.6.0  | https://cn.vitest.dev/<br>https://cn.vuejs.org/guide/scaling-up/testing.html |
-| `pinyin-pro`         | 汉字转拼音库  | latest | https://pinyin-pro.cn/                                       |
+| `Vue`          | 前端框架         | `3.5.24`                                                       | https://v3.vuejs.org/                |
+| `Vue-Router`   | 路由框架         | `4.6.4`                                                       | https://next.router.vuejs.org/       |
+| `Vite`         | 前端构建工具     | `7.2.5 (rolldown-vite)`                                       | https://vitejs.dev/                  |
+| `Three.js`     | 3D 图形库        | `0.182.0`                                                    | https://threejs.org/                 |
+| `ali-oss`      | 阿里云 OSS SDK   | `6.20.0`                                                     | https://github.com/ali-sdk/ali-oss   |
 
 ## 环境要求
 
@@ -70,35 +110,73 @@
 | 依赖环境  | 版本 | 备注                      |
 | --------- | ---- | ------------------------- |
 | `Windows` | 10+  | 操作系统                  |
-| `JDK`     | 17+  | https://www.injdk.cn/     |
-| `NodeJS`  | xxx  | https://nodejs.org/zh-cn/ |
-| `NPM`     | xxx  | https://www.npmjs.com/    |
+| `NodeJS`  | 20.15.0+ | https://nodejs.org/zh-cn/ |
+| `NPM`     | 10.0.0+  | https://www.npmjs.com/    |
+
+
 
 ### 服务器环境
 
-| 依赖环境    | 版本                                                         | 备注                                                         |
-| ----------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
-| `Anolis OS` | `8.6GA`                                                      | https://openanolis.cn/anolisos                               |
-| `Docker`    | latest                                                       | https://www.docker.com/                                      |
-| `MySQL`     | 8.0.20                                                       | https://www.mysql.com/cn/                                    |
-| `Redis`     | 6.2.7                                                        | https://redis.io/                                            |
-| `Nacos`     | 2.1.0                                                        | https://nacos.io/zh-cn/docs/quick-start-docker.html          |
-| `Sentinel`  | 1.8.4                                                        | https://github.com/alibaba/Sentinel/releases                 |
-| `Seata`     | 1.5.1                                                        | https://github.com/seata/seata                               |
-| `RocketMQ`  | 4.9.3                                                        | https://rocketmq.apache.org/                                 |
-| `Nginx`     | latest                                                       | https://nginx.org/en/                                        |
-| `FastDFS`   | [V6.07](https://github.com/happyfish100/fastdfs/releases/tag/V6.07) | https://gitee.com/fastdfs100                                 |
-| `ELK`       | 7.6.2                                                        | https://www.elastic.co/guide/en/elastic-stack/7.6/index.html |
-| `MongoDB`   | 4.4.17                                                       | https://www.mongodb.com/try/download/community               |
-| `Jenkins`   | latest                                                       | https://www.jenkins.io/zh/doc/book/installing/               |
+> | 依赖环境    | 版本                                                         | 备注                                                         |
+> | ----------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
+> | `Anolis OS` | `8.6GA`                                                      | https://openanolis.cn/anolisos                               |
+> | `Docker`    | latest                                                       | https://www.docker.com/                                      |
+> | `PostgreSQL` | 14.0+                                                      | https://www.postgresql.org/                                 |
+> | `Redis`     | 6.2.7                                                        | https://redis.io/                                            |
+> | `Nginx`     | latest                                                       | https://nginx.org/en/                                        |
+>
+
+
+
+## 快速开始
+
+### 安装依赖
+
+```bash
+cd frontend/music-player
+npm install
+```
+
+### 开发模式
+
+```bash
+npm run dev
+```
+
+### 构建生产版本
+
+```bash
+npm run build
+```
+
+### 预览生产构建
+
+```bash
+npm run preview
+```
+
+## 环境配置
+
+在 `src/api.js` 中配置后端 API 地址：
+
+```javascript
+const API_BASE_URL = import.meta.env.PROD
+  ? 'https://auris.hazenix.top/api'  // 生产环境
+  : 'http://localhost:8080/api'      // 开发环境
+```
 
 ## 部分功能预览图
+
+> （预览图路径：`documents/00、preview-pic/`）
+>
+
+
 
 
 
 ## 特别鸣谢
 
-`name`的诞生离不开开源软件和社区的支持，感谢以下开源项目及项目维护者：
+`Auris`的诞生离不开开源软件和社区的支持，感谢以下开源项目及项目维护者：
 
 - `spring`：https://github.com/spring-projects
 - `alibaba`：https://github.com/alibaba
