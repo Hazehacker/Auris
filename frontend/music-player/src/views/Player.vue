@@ -927,6 +927,17 @@ import { api } from '../api.js'
         </div>
       </div>
     </div>
+    
+    <!-- Toast 通知 -->
+    <div v-if="toastMessage" class="toast" :class="`toast-${toastType}`">
+      <span class="toast-icon">
+        <span v-if="toastType === 'success'">✓</span>
+        <span v-else-if="toastType === 'error'">✕</span>
+        <span v-else-if="toastType === 'warning'">⚠</span>
+        <span v-else>ℹ</span>
+      </span>
+      <span class="toast-message">{{ toastMessage }}</span>
+    </div>
   </div>
 </template>
 
@@ -935,6 +946,17 @@ import { ref, watch, onMounted, computed, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { api } from '../api.js'
 import { uploadCoverToOSS, uploadAudioToOSS } from '../utils/ossUpload.js'
+
+// Toast 通知系统
+const toastMessage = ref('')
+const toastType = ref('info') // 'success', 'error', 'info', 'warning'
+const showToast = (message, type = 'info', duration = 3000) => {
+  toastMessage.value = message
+  toastType.value = type
+  setTimeout(() => {
+    toastMessage.value = ''
+  }, duration)
+}
 
 // 主题切换
 const isDarkMode = ref(localStorage.getItem('theme') !== 'light')
@@ -1157,7 +1179,7 @@ const removeCover = async () => {
     selectedPlaylist.value.coverFile = null;
     
     await fetchPlaylists();
-    alert("歌单封面已成功移除！");
+    showToast("歌单封面已成功移除！", 'success');
   } catch (err) {
     console.error("移除封面失败：", err);
     alert(`移除封面失败：${err.message}`);
@@ -1429,12 +1451,12 @@ const handleFileUpload = async (e) => {
 
       // 保留+强化：重新加载歌单数据，同步最新歌曲&播放URL
       await loadPlaylistTracks(selectedPlaylistId.value)
-      alert(`歌曲【${title}】上传成功，可立即播放！`)
+      showToast(`歌曲【${title}】上传成功，可立即播放！`, 'success')
 
     } catch (err) {
       // 保留+优化：错误捕获+友好提示
       console.error(`【${title}】上传失败:`, err)
-      alert(`歌曲【${title}】上传失败: ` + (err.message || '未知错误'))
+      showToast(`歌曲【${title}】上传失败: ` + (err.message || '未知错误'), 'error')
     }
   }
 }
@@ -2059,9 +2081,11 @@ const confirmUploadCover = async () => {
     }
     
     // 显示成功提示
-    alert('封面上传成功！')
+    showToast('封面上传成功！', 'success')
     
     // 关闭模态
+    uploadingCover.value = false
+    uploadCoverProgress.value = 0
     closeUploadCoverModal()
   } catch (err) {
     console.error('上传封面失败', err)
@@ -2171,7 +2195,7 @@ const confirmUploadAudio = async () => {
     }
 
     // 优化提示文案：告知用户「立即播放」能力，提升体验
-    alert('音频上传成功！可立即播放该歌曲')
+    showToast('音频上传成功！可立即播放该歌曲', 'success')
     
     // 关闭上传弹窗，回归主界面
     uploadingAudio.value = false // 先重置上传状态，允许关闭窗口
@@ -2353,7 +2377,7 @@ const confirmDeletePlaylist = async () => {
         editDesc.value = ''; // 清空编辑简介
       }
 
-      alert('歌单已成功删除！');
+      showToast('歌单已成功删除！', 'success');
     } else {
       alert(data.msg || '歌单删除失败，请重试');
     }
@@ -2441,7 +2465,7 @@ const confirmDeleteSong = async () => {
     // 新增：刷新歌单数据，保证视图同步
     await loadPlaylistTracks(selectedPlaylist.value.id);
 
-    alert(`歌曲《${song.name}》已从单曲集合中永久删除！`);
+      showToast(`歌曲《${song.name}》已从单曲集合中永久删除！`, 'success');
   } catch (err) {
     console.error('全局删除歌曲失败', err);
     alert(`删除失败: ${err.message || '网络异常，请重试'}`);
@@ -2499,7 +2523,7 @@ const toggleEditContent = async () => {
       selectedPlaylist.value.coverFile = null;
       editing.value = false;
       await fetchPlaylists(); // 刷新歌单列表，保证全局数据一致
-      alert(" 歌单名称、简介、封面修改全部成功！");
+      showToast("歌单名称、简介、封面修改全部成功！", 'success');
     } else {
       alert(` 保存失败：${res.msg || "后端接口异常"}`);
     }
@@ -3025,20 +3049,19 @@ const handleAvatarUpload = async (e) => {
     }
     currentUser.value.avatar = previewUrl; // 即时预览
 
-    // 3. 核心：上传图片文件 → 获取后端返回的【永久头像URL】
-    const formData = new FormData();
-    formData.append('avatar', file); // 字段名 avatar 与后端约定一致
+    // 3. 使用OSS直传方式上传头像
+    const { uploadToOSS } = await import('../utils/ossUpload.js');
     
-    // 适配你的api.js：调用顶层request方法，路径按后端实际文件上传地址填写
-    const uploadRes = await api.request('/user/user/avatar', {
-      method: 'POST',
-      body: formData
-    });
+    // 获取临时凭证
+    const credRes = await api.getTempCredentials();
+    if (credRes.code !== 200) {
+      throw new Error(credRes.msg || '获取上传凭证失败');
+    }
+    
+    // 上传到OSS
+    const permanentAvatarUrl = await uploadToOSS(file, credRes.data, null);
 
-    if (uploadRes.code !== 200) throw new Error(uploadRes.msg || '头像上传失败');
-    const permanentAvatarUrl = uploadRes.data; // 后端返回的永久URL
-
-    // 4. 复用已有接口 updateProfile 实现持久化（无新增接口）
+    // 4. 使用updateProfile接口更新头像URL到数据库
     const updateRes = await api.updateProfile({
       avatar: permanentAvatarUrl // 仅传需要修改的avatar字段，其他字段不变
     });
@@ -3046,14 +3069,14 @@ const handleAvatarUpload = async (e) => {
     if (updateRes.code === 200) {
       // 同步前端用户数据，确保实时生效
       currentUser.value = { ...currentUser.value, avatar: permanentAvatarUrl };
-      alert("头像更换成功！下次登录将自动加载");
+      showToast("头像更换成功！", 'success');
     } else {
       throw new Error(updateRes.msg || '用户信息更新失败');
     }
 
   } catch (err) {
     console.error("头像持久化失败：", err);
-    alert(`头像保存失败：${err.message}`);
+    showToast(`头像保存失败：${err.message}`, 'error');
     // 异常兜底：恢复数据库中原有头像（复用你项目的fetchUserInfo）
     await fetchUserInfo();
   }
@@ -3092,7 +3115,7 @@ const saveProfile = async () => {
     if (data.code === 200) {
       currentUser.value = { ...currentUser.value, ...data.data };
       editingProfile.value = false;
-      alert('个人资料保存成功！');
+      showToast('个人资料保存成功！', 'success');
     } else {
       alert(data.msg || '保存失败');
     }
