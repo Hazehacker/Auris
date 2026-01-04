@@ -1034,10 +1034,10 @@ button:focus-visible {
 	transform: scale(1.05);
 }
 .main-area {
-	flex: 1;
+	flex: 1 1 0; /* flex-grow: 1, flex-shrink: 1, flex-basis: 0 */
 	display: flex;
 	overflow: hidden;
-	padding-bottom: 80px;
+	min-height: 0; /* 允许flex子元素缩小 */
 }
 .sidebar {
 	width: 240px;
@@ -1177,10 +1177,14 @@ button:focus-visible {
 	text-align: center;
 }
 .content {
-	flex: 1;
+	flex: 1 1 0; /* flex-grow: 1, flex-shrink: 1, flex-basis: 0 */
 	padding: 1.5rem;
-	overflow-y: auto;
+	padding-bottom: 6rem; /* 增加底部内边距，避免被播放栏遮挡 */
+	overflow-y: auto !important; /* 强制启用滚动 */
+	overflow-x: hidden;
 	background-color: transparent;
+	min-height: 0; /* 允许flex子元素缩小 */
+	max-height: 100%; /* 确保不超过父容器高度 */
 }
 .profile-page {
 	width: 100%;
@@ -3305,8 +3309,10 @@ tr.active {
   padding-bottom: 0 !important;
 }
 
+/* 移除阻止滚动的样式，确保内容可以滚动 */
 .content {
-  overflow: hidden !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
 }
 
 /* Toast 通知样式 */
