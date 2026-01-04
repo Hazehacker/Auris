@@ -44,7 +44,7 @@ import { api } from '../api.js'
             <span class="expand-icon">{{ playlistsOpen ? '▾' : '▸' }}</span><span class="playlists-title">歌单列表</span>
           </li>
           <ul v-if="playlistsOpen" class="playlist-children">
-            <li class="side-item create-playlist-item" role="button" tabindex="0" @click="createPlaylist">
+            <li class="side-item create-playlist-item" role="button" tabindex="0" @click="createPlaylist" style="margin-top: 0%;">
               <span class="create-playlist-text">＋ 创建新歌单</span>
             </li>
             <li v-if="!playlists.length" class="side-item empty-note">（当前无歌单）</li>
