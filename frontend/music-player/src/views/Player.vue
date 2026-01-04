@@ -81,15 +81,15 @@ import { api } from '../api.js'
             <div class="cover" :style="coverStyle" role="button" tabindex="0" @click="viewMode==='playlist' && editing ? openCoverDialog() : null" @keydown.enter="viewMode==='playlist' && editing ? openCoverDialog() : null">
               <div class="cover-placeholder" v-if="!(viewMode === 'playlist' && selectedPlaylist && selectedPlaylist.cover)">
                 <!-- 默认美观图标（SVG） -->
-                <svg class="cover-default-icon" viewBox="0 0 64 64" role="img" aria-label="默认封面">
+                <svg class="cover-default-icon" viewBox="0 0 64 64" role="img" aria-label="默认封面" >
                   <defs>
                     <linearGradient id="coverGrad" x1="0" x2="1" y1="0" y2="1">
-                      <stop offset="0" :stop-color="isDarkMode ? '#192335' : '#e9f7f0'" />
-                      <stop offset="1" :stop-color="isDarkMode ? '#1e2d3d' : '#dff7ef'" />
+                      <stop offset="0" :stop-color="isDarkMode ? '#192335' : '#e9eef4'" />
+                      <stop offset="1" :stop-color="isDarkMode ? '#1e2d3d' : '#d3e3fd'" />
                     </linearGradient>
                   </defs>
                   <rect x="0" y="0" width="64" height="64" rx="8" fill="url(#coverGrad)" />
-                  <path d="M40 20v16a6 6 0 1 1-4-5.2V22l-10 3v12" fill="none" :stroke="isDarkMode ? '#4a90e2' : '#2fb67d'" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+                  <path d="M40 20v16a6 6 0 1 1-4-5.2V22l-10 3v12" fill="none" :stroke="isDarkMode ? '#4a90e2' : '#4a90e2'" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
                 </svg>
               </div>
               <!-- 编辑时显示覆盖操作 -->
@@ -131,8 +131,6 @@ import { api } from '../api.js'
               </button>
               <!-- 管理歌曲按钮（所有模式启用） -->
               <button class="btn green-outline" @click="openManageSongs">管理歌曲</button>
-              <!-- 编辑内容按钮（仅歌单模式） -->
-              <button v-if="viewMode === 'playlist'" class="btn green-outline" :disabled="!selectedPlaylist" @click="toggleEditContent">{{ editing ? '保存' : '编辑内容' }}</button>
               <button v-if="editing && selectedPlaylist" class="btn danger" @click="deleteConfirmOpen = true">删除歌单</button>
             </div>
           </div>
@@ -1199,7 +1197,7 @@ const coverStyle = computed(() => {
   if (isDarkMode.value) {
     return { backgroundImage: 'linear-gradient(90deg,#2a3a4a,#1e2d3d)' }
   }
-  return { backgroundImage: 'linear-gradient(90deg,#e9f7f0,#f7fff9)' }
+  return { backgroundImage: 'linear-gradient(90deg,#e5eaf1,#9ac3f6)' }
 })
 
 const openCoverDialog = () => {
