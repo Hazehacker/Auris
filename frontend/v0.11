@@ -155,7 +155,7 @@
     <div v-if="songDeleteConfirmOpen" class="modal-overlay" @click.self="songDeleteConfirmOpen = false">
       <div class="modal">
         <h3>确认删除歌曲？</h3>
-        <p class="muted">删除后将从所有歌单中移除，且无法恢复</p>
+        <p class="muted">删除后将从歌单中移除，且无法恢复</p>
         <div class="modal-actions">
           <button class="btn green-outline" @click="songDeleteConfirmOpen = false">取消</button>
           <button class="btn danger" @click="confirmDeleteSong">确认删除</button>
