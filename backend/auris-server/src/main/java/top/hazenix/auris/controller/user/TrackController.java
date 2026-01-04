@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import top.hazenix.auris.constant.MessageConstant;
+import top.hazenix.auris.dto.UpdateTrackDTO;
 import top.hazenix.auris.entity.Track;
 import top.hazenix.auris.query.ReOrderTracksQuery;
 import top.hazenix.auris.query.TrackQuery;
@@ -177,6 +178,20 @@ public class TrackController {
         trackService.validateTrackExists(id);
         Map<String,String> map = trackService.getTempCredentials();
         return Result.success(map);
+    }
+
+    /**
+     * @description: 修改歌曲信息
+     * @param: id, updateTrackDTO
+     * @version: 1.0.0
+     * @return
+     */
+    @PutMapping("/{id}")
+    @ApiOperation("修改歌曲信息")
+    public Result updateTrack(@PathVariable Long id, @RequestBody UpdateTrackDTO updateTrackDTO) {
+        log.info("修改歌曲信息，歌曲ID：{}，更新内容：{}", id, updateTrackDTO);
+        trackService.updateTrack(id, updateTrackDTO);
+        return Result.success();
     }
 
 }

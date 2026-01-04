@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import top.hazenix.auris.constant.MessageConstant;
 import top.hazenix.auris.context.BaseContext;
+import top.hazenix.auris.dto.UpdateTrackDTO;
 import top.hazenix.auris.entity.PlaylistTracks;
 import top.hazenix.auris.entity.Track;
 import top.hazenix.auris.mapper.PlaylistTracksMapper;
@@ -198,6 +199,57 @@ public class TrackServiceImpl implements ITrackService {
         if (track == null) {
             throw new RuntimeException(MessageConstant.TRACK_NOT_EXIST);
         }
+    }
+
+    @Override
+    public void updateTrack(Long id, UpdateTrackDTO updateTrackDTO) {
+        // 参数校验
+        if (id == null || id <= 0) {
+            throw new RuntimeException("歌曲ID不能为空或无效");
+        }
+        if (updateTrackDTO == null) {
+            throw new RuntimeException("更新数据不能为空");
+        }
+        // 验证歌曲是否存在
+        Track track = trackMapper.selectById(id);
+        if (track == null) {
+            throw new RuntimeException(MessageConstant.TRACK_NOT_EXIST);
+        }
+        // 只更新非空字段
+        boolean hasUpdate = false;
+        if (updateTrackDTO.getTitle() != null && !updateTrackDTO.getTitle().trim().isEmpty()) {
+            track.setTitle(updateTrackDTO.getTitle().trim());
+            hasUpdate = true;
+        }
+        if (updateTrackDTO.getArtist() != null && !updateTrackDTO.getArtist().trim().isEmpty()) {
+            track.setArtist(updateTrackDTO.getArtist().trim());
+            hasUpdate = true;
+        }
+        if (updateTrackDTO.getAlbum() != null) {
+            track.setAlbum(updateTrackDTO.getAlbum().trim());
+            hasUpdate = true;
+        }
+        if (updateTrackDTO.getDuration() != null) {
+            track.setDuration(updateTrackDTO.getDuration());
+            hasUpdate = true;
+        }
+        if (updateTrackDTO.getFilePath() != null && !updateTrackDTO.getFilePath().trim().isEmpty()) {
+            track.setFilePath(updateTrackDTO.getFilePath().trim());
+            hasUpdate = true;
+        }
+        if (updateTrackDTO.getCoverUrl() != null) {
+            track.setCoverUrl(updateTrackDTO.getCoverUrl().trim());
+            hasUpdate = true;
+        }
+        if (updateTrackDTO.getSourceType() != null) {
+            track.setSourceType(updateTrackDTO.getSourceType().trim());
+            hasUpdate = true;
+        }
+        if (!hasUpdate) {
+            throw new RuntimeException("至少需要提供一个要更新的字段");
+        }
+        trackMapper.updateById(track);
+        log.info("更新歌曲信息，歌曲ID：{}，更新内容：{}", id, updateTrackDTO);
     }
 
 }

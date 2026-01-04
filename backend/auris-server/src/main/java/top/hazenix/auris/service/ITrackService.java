@@ -2,6 +2,7 @@ package top.hazenix.auris.service;
 
 import com.aliyuncs.exceptions.ClientException;
 import org.springframework.web.multipart.MultipartFile;
+import top.hazenix.auris.dto.UpdateTrackDTO;
 import top.hazenix.auris.entity.Track;
 import top.hazenix.auris.query.TrackQuery;
 
@@ -24,4 +25,6 @@ public interface ITrackService {
     Map<String, String> getTempCredentials() throws ClientException;
 
     void validateTrackExists(Long id);
+
+    void updateTrack(Long id, UpdateTrackDTO updateTrackDTO);
 }
