@@ -220,6 +220,15 @@ export const api = {
     })
   },
 
+  // 修改歌曲信息
+  updateTrack(trackId, data) {
+    return this.request(`/user/track/${trackId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    })
+  },
+
   // ========== 歌词相关接口 ==========
 
   // 接口16：根据歌曲id获取歌词

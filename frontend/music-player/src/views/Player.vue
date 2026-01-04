@@ -1421,9 +1421,8 @@ const handleFileUpload = async (e) => {
       )
 
       // 3. OSS上传成功后，更新歌曲的音频URL到后端
-      const updateRes = await api.updateTrackUrl({
-        trackId: songId,
-        audioUrl: audioUrl
+      const updateRes = await api.updateTrack(songId, {
+        filePath: audioUrl
       })
       if (updateRes.code !== 200) throw new Error(updateRes.msg || '更新歌曲播放地址失败')
       // ======================================================
@@ -2137,6 +2136,14 @@ const confirmUploadAudio = async () => {
       }
     )
     
+    // 核心0：OSS上传成功后，更新歌曲的音频URL到后端数据库
+    const updateRes = await api.updateTrack(song.id, {
+      filePath: audioUrl
+    })
+    if (updateRes.code !== 200) {
+      throw new Error(updateRes.msg || '更新歌曲播放地址失败')
+    }
+    
     // 核心1：强绑定更新前端歌曲URL，确保播放链路生效
     song.url = audioUrl
     
@@ -2167,11 +2174,12 @@ const confirmUploadAudio = async () => {
     alert('音频上传成功！可立即播放该歌曲')
     
     // 关闭上传弹窗，回归主界面
+    uploadingAudio.value = false // 先重置上传状态，允许关闭窗口
+    uploadAudioProgress.value = 0 // 重置上传进度
     closeUploadAudioModal()
   } catch (err) {
     console.error('上传音频失败', err)
     uploadAudioError.value = err.message || '网络错误，请重试'
-  } finally {
     uploadingAudio.value = false
     uploadAudioProgress.value = 0
   }
