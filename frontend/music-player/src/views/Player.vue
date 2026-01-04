@@ -214,11 +214,12 @@ import { api } from '../api.js'
                 <td class="upload-cover-col">
                   <button 
                     class="icon-btn action-btn tooltip-btn" 
+                    :class="{ 'has-cover': s.coverUrl }"
                     @click.stop="openUploadCoverModal(i)" 
-                    :title="'上传封面图片'"
+                    :title="s.coverUrl ? '修改封面图片' : '上传封面图片'"
                   >
-                    <span class="btn-icon">🖼️</span>
-                    <span class="tooltip-text">上传封面</span>
+                    <span class="btn-icon">{{ s.coverUrl ? '✅' : '🖼️' }}</span>
+                    <span class="tooltip-text">{{ s.coverUrl ? '修改封面' : '上传封面' }}</span>
                   </button>
                 </td>
                 <td class="delete-col">
@@ -2246,7 +2247,18 @@ const confirmUploadCover = async () => {
       }
     )
     
-    // 上传成功，更新歌曲的封面URL
+    // 上传成功，调用接口持久化封面URL
+    try {
+      const updateResponse = await api.updateTrack(song.id, { coverUrl: coverUrl })
+      if (updateResponse.code !== 200) {
+        throw new Error(updateResponse.msg || '更新封面信息失败')
+      }
+    } catch (updateErr) {
+      console.error('持久化封面URL失败', updateErr)
+      throw new Error(updateErr.message || '更新封面信息失败')
+    }
+    
+    // 更新本地歌曲的封面URL
     if (song) {
       song.coverUrl = coverUrl
     }
@@ -3403,6 +3415,17 @@ const saveProfile = async () => {
 
 .playlist-list {
   margin: 16px 0;
+}
+
+/* 有封面的按钮样式 */
+.icon-btn.has-cover {
+  background-color: rgba(34, 197, 94, 0.1);
+  border-color: rgba(34, 197, 94, 0.3);
+}
+
+.icon-btn.has-cover:hover {
+  background-color: rgba(34, 197, 94, 0.2);
+  border-color: rgba(34, 197, 94, 0.5);
 }
 
 /* 响应式调整 */
