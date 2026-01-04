@@ -5,6 +5,7 @@ import io.swagger.annotations.ApiOperation;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
+import top.hazenix.auris.dto.AddTrackToPlaylistsDTO;
 import top.hazenix.auris.entity.Playlist;
 import top.hazenix.auris.query.PlaylistQuery;
 import top.hazenix.auris.result.Result;
@@ -80,6 +81,20 @@ public class PlaylistController {
     public Result deletePlaylist(@PathVariable Long id){
         log.info("删除歌单:{}",id);
         playlistService.deletePlaylist(id);
+        return Result.success();
+    }
+
+    /**
+     * @description: 添加歌曲到多个歌单
+     * @param: addTrackToPlaylistsDTO
+     * @version: 1.0.0
+     * @return
+     */
+    @PostMapping("/tracks")
+    @ApiOperation("添加歌曲到多个歌单")
+    public Result addTrackToPlaylists(@RequestBody AddTrackToPlaylistsDTO addTrackToPlaylistsDTO){
+        log.info("添加歌曲到多个歌单:{}", addTrackToPlaylistsDTO);
+        playlistService.addTrackToPlaylists(addTrackToPlaylistsDTO);
         return Result.success();
     }
 

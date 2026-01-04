@@ -16,4 +16,25 @@ public interface PlaylistTracksMapper extends BaseMapper<PlaylistTracks> {
      * @return
      */
     List<Track> listTracksByPlaylistId(Long id);
+
+    /**
+     * 批量插入歌曲到歌单
+     * @param playlistTracksList
+     */
+    void batchInsert(List<PlaylistTracks> playlistTracksList);
+
+    /**
+     * 检查歌曲是否已在歌单中
+     * @param playlistId
+     * @param trackId
+     * @return
+     */
+    PlaylistTracks findByPlaylistIdAndTrackId(Long playlistId, Long trackId);
+
+    /**
+     * 获取歌单中最大的orderIndex
+     * @param playlistId
+     * @return
+     */
+    Integer getMaxOrderIndexByPlaylistId(Long playlistId);
 }

@@ -10,4 +10,25 @@
         where pt.playlist_id = #{id}
         ORDER BY pt.order_index desc;
     </select>
+
+    <insert id="batchInsert" parameterType="java.util.List">
+        insert into playlist_tracks (playlist_id, track_id, order_index)
+        values
+        <foreach collection="list" item="item" separator=",">
+            (#{item.playlistId}, #{item.trackId}, #{item.orderIndex})
+        </foreach>
+    </insert>
+
+    <select id="findByPlaylistIdAndTrackId" resultType="top.hazenix.auris.entity.PlaylistTracks">
+        select id, playlist_id, track_id, order_index
+        from playlist_tracks
+        where playlist_id = #{playlistId} and track_id = #{trackId}
+        limit 1
+    </select>
+
+    <select id="getMaxOrderIndexByPlaylistId" resultType="java.lang.Integer">
+        select COALESCE(MAX(order_index), 0)
+        from playlist_tracks
+        where playlist_id = #{playlistId}
+    </select>
 </mapper>
