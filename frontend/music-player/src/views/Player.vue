@@ -128,8 +128,6 @@ import { api } from '../api.js'
               <button v-if="viewMode === 'playlist'" class="btn green" :disabled="!selectedPlaylist" @click="openAddTrackModal">
                 ＋ 添加歌曲
               </button>
-              <!-- 管理歌曲按钮（所有模式启用） -->
-              <button class="btn green-outline" @click="openManageSongs">管理歌曲</button>
               <button v-if="editing && selectedPlaylist" class="btn danger" @click="deleteConfirmOpen = true">删除歌单</button>
             </div>
           </div>
@@ -2479,7 +2477,31 @@ const confirmAddTrack = async () => {
   addingTrack.value = true
   
   try {
-    // 准备上传数据
+    let audioUrl = null
+    
+    // 如果有音频文件，先上传到OSS
+    if (newTrackForm.value.file) {
+      try {
+        // 1. 获取STS临时凭证（接口18）
+        const credRes = await api.getTempCredentials()
+        if (credRes.code !== 200) {
+          throw new Error(credRes.msg || '获取上传凭证失败')
+        }
+        
+        // 2. 上传音频到OSS
+        const { uploadToOSS } = await import('../utils/ossUpload.js')
+        audioUrl = await uploadToOSS(newTrackForm.value.file, credRes.data, (progress) => {
+          console.log(`音频上传进度：${progress}%`)
+        })
+        console.log('音频上传成功，URL:', audioUrl)
+      } catch (uploadErr) {
+        console.error('音频上传失败', uploadErr)
+        addTrackError.value.general = uploadErr.message || '音频上传失败，请重试'
+        return
+      }
+    }
+    
+    // 3. 准备上传数据（不带file参数）
     const uploadData = {
       playlistId: selectedPlaylistId.value,
       title: title,
@@ -2491,15 +2513,7 @@ const confirmAddTrack = async () => {
       uploadData.album = newTrackForm.value.album.trim()
     }
     
-    if (newTrackForm.value.file) {
-      uploadData.file = newTrackForm.value.file
-    }
-    
-    // 注意：接口文档中coverUrl是URL字符串，不是文件
-    // 如果需要上传封面文件，可能需要先上传获取URL，或者后端支持直接上传文件
-    // 这里暂时只支持URL，如果需要上传文件，需要额外的接口
-    
-    // 使用接口11：向歌单添加歌曲
+    // 使用接口11：向歌单添加歌曲（不带file参数）
     const data = await api.addTrackToPlaylist(uploadData)
     
     if (data.code === 200) {
@@ -2508,6 +2522,36 @@ const confirmAddTrack = async () => {
       // 如果当前在单曲集合视图，也刷新单曲集合
       if (viewMode.value === 'all') {
         await loadAllTracks()
+      }
+      
+      // 如果上传了音频，需要找到刚添加的歌曲并更新音频链接
+      if (audioUrl) {
+        // 从刚加载的歌曲列表中找到刚添加的歌曲（通过标题和歌手匹配）
+        const playlist = playlists.value.find(p => p.id === selectedPlaylistId.value)
+        if (playlist && playlist.songs && playlist.songs.length > 0) {
+          // 获取最后添加的歌曲（假设是按顺序添加的）
+          const lastSongIndex = playlist.songs[playlist.songs.length - 1]
+          const lastSong = songList.value[lastSongIndex]
+          
+          // 如果标题和歌手匹配，说明是刚添加的歌曲
+          if (lastSong && lastSong.name === title && lastSong.artist === artist && lastSong.id) {
+            try {
+              // 使用接口21：修改歌曲信息，更新音频链接
+              const updateRes = await api.updateTrack(lastSong.id, {
+                filePath: audioUrl
+              })
+              if (updateRes.code === 200) {
+                // 更新本地歌曲的音频URL
+                lastSong.url = audioUrl
+                // 重新加载歌单以更新音频链接
+                await loadPlaylistTracks(selectedPlaylistId.value)
+              }
+            } catch (updateErr) {
+              console.error('更新音频链接失败', updateErr)
+              // 更新失败不影响主流程，只记录错误
+            }
+          }
+        }
       }
       
       // 如果用户上传了封面文件，尝试上传封面
