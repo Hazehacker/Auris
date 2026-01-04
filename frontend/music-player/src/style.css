@@ -1514,102 +1514,238 @@ thead tr {
 
 th {
 	text-align: left;
-	padding: 0.8rem 1rem;
-	font-size: 0.9rem;
+	padding: 0.75rem 1rem;
+	font-size: 0.85rem;
 	color: var(--text-secondary);
 	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	user-select: none;
 }
+
 td {
-	padding: 0.8rem 1rem;
-	font-size: 0.95rem;
+	padding: 0.75rem 1rem;
+	font-size: 0.9rem;
 	border-top: 1px solid var(--border-color);
 	color: var(--text-primary);
-	transition: all 0.3s ease;
+	transition: all 0.2s ease;
+	vertical-align: middle;
 }
+
+tr {
+	transition: background-color 0.2s ease;
+}
+
 tr:hover {
-	background-color: rgba(96, 165, 250, 0.1);
+	background-color: rgba(96, 165, 250, 0.08);
 }
+
+:root[data-theme="dark"] tr:hover,
+:root:not([data-theme]) tr:hover {
+	background-color: rgba(96, 165, 250, 0.12);
+}
+
+:root[data-theme="light"] tr:hover {
+	background-color: rgba(96, 165, 250, 0.06);
+}
+
 tr.active {
+	background-color: rgba(96, 165, 250, 0.15);
+}
+
+:root[data-theme="dark"] tr.active,
+:root:not([data-theme]) tr.active {
 	background-color: rgba(96, 165, 250, 0.2);
 }
+
+:root[data-theme="light"] tr.active {
+	background-color: rgba(96, 165, 250, 0.12);
+}
+/* 表格列样式 */
+.play-col {
+	text-align: center;
+	width: 50px;
+	padding: 0.6rem 0.5rem !important;
+}
+
 .title-col {
 	font-weight: 500;
 	color: var(--text-primary);
-	max-width: 200px;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+	max-width: 0;
 }
-.time-col, .artist-col {
+
+.artist-col,
+.album-col {
 	color: var(--text-secondary);
-	width: 100px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	max-width: 0;
 }
-.fav-col {
-	width: 80px;
+
+.time-col {
+	color: var(--text-secondary);
 	text-align: center;
+	width: 80px;
+	font-size: 0.9rem;
+	font-variant-numeric: tabular-nums;
 }
+
+.fav-col {
+	width: 70px;
+	text-align: center;
+	padding: 0.6rem 0.5rem !important;
+}
+
 .fav-btn {
 	background: transparent;
 	border: none;
-	font-size: 1rem;
+	font-size: 1.1rem;
 	cursor: pointer;
+	padding: 4px 8px;
+	border-radius: 6px;
+	transition: all 0.2s;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 32px;
+	height: 32px;
 }
+
+.fav-btn:hover {
+	background-color: rgba(239, 68, 68, 0.1);
+	transform: scale(1.1);
+}
+
 .fav-btn.filled {
 	color: #ef4444;
 }
-.action-col {
-	width: 120px;
+
+.upload-audio-col,
+.upload-cover-col,
+.delete-col {
 	text-align: center;
+	padding: 0.6rem 0.5rem !important;
+	width: 90px;
 }
 
-.title-with-play {
-	display: flex;
-	align-items: center;
-	gap: 8px;
+.delete-col {
+	width: 80px;
+}
+
+.action-placeholder {
+	color: var(--text-muted);
+	font-size: 0.9rem;
+}
+
+.song-title-text {
+	display: block;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	cursor: default;
 }
 
 .play-icon-btn {
 	background: transparent;
 	border: none;
 	cursor: pointer;
-	font-size: 14px;
+	font-size: 16px;
 	color: var(--primary);
-	padding: 4px;
-	display: flex;
+	padding: 6px;
+	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	min-width: 24px;
-	height: 24px;
-	border-radius: 4px;
+	min-width: 32px;
+	height: 32px;
+	border-radius: 6px;
 	transition: all 0.2s;
-	flex-shrink: 0;
 }
 
 .play-icon-btn:hover:not(:disabled) {
-	background-color: #f0fdf4;
+	background-color: rgba(96, 165, 250, 0.15);
 	transform: scale(1.1);
 }
 
-.play-icon-btn:disabled {
-	color: #d1d5db;
-	cursor: not-allowed;
-	opacity: 0.5;
+:root[data-theme="dark"] .play-icon-btn:hover:not(:disabled),
+:root:not([data-theme]) .play-icon-btn:hover:not(:disabled) {
+	background-color: rgba(96, 165, 250, 0.2);
 }
 
-.song-title-text {
-	flex: 1;
-	min-width: 0;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
+:root[data-theme="light"] .play-icon-btn:hover:not(:disabled) {
+	background-color: rgba(96, 165, 250, 0.1);
+}
+
+.play-icon-btn:disabled {
+	color: var(--text-muted);
+	cursor: not-allowed;
+	opacity: 0.4;
 }
 
 .action-buttons {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	gap: 6px;
+	gap: 4px;
 	flex-wrap: nowrap;
+}
+
+.upload-audio-col .action-btn,
+.upload-cover-col .action-btn,
+.delete-col .action-btn {
+	margin: 0 auto;
+}
+
+.tooltip-btn {
+	position: relative;
+}
+
+.tooltip-btn .btn-icon {
+	display: inline-block;
+}
+
+.tooltip-btn .tooltip-text {
+	position: absolute;
+	bottom: 100%;
+	left: 50%;
+	transform: translateX(-50%);
+	background-color: rgba(0, 0, 0, 0.85);
+	color: #fff;
+	padding: 4px 8px;
+	border-radius: 4px;
+	font-size: 0.75rem;
+	white-space: nowrap;
+	opacity: 0;
+	pointer-events: none;
+	transition: opacity 0.2s, transform 0.2s;
+	margin-bottom: 4px;
+	z-index: 1000;
+}
+
+:root[data-theme="light"] .tooltip-btn .tooltip-text {
+	background-color: rgba(0, 0, 0, 0.9);
+}
+
+.tooltip-btn .tooltip-text::after {
+	content: '';
+	position: absolute;
+	top: 100%;
+	left: 50%;
+	transform: translateX(-50%);
+	border: 4px solid transparent;
+	border-top-color: rgba(0, 0, 0, 0.85);
+}
+
+:root[data-theme="light"] .tooltip-btn .tooltip-text::after {
+	border-top-color: rgba(0, 0, 0, 0.9);
+}
+
+.tooltip-btn:hover .tooltip-text {
+	opacity: 1;
+	transform: translateX(-50%) translateY(-2px);
 }
 
 .icon-btn {
@@ -1627,7 +1763,7 @@ tr.active {
 
 .action-btn {
 	margin: 0;
-	padding: 4px 8px;
+	padding: 6px 8px;
 	border-radius: 6px;
 	transition: all 0.2s;
 	min-width: 32px;
@@ -1635,12 +1771,22 @@ tr.active {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	font-size: 14px;
+	font-size: 16px;
+	position: relative;
 }
 
 .action-btn:hover {
+	background-color: rgba(96, 165, 250, 0.15);
+	transform: scale(1.08);
+}
+
+:root[data-theme="dark"] .action-btn:hover,
+:root:not([data-theme]) .action-btn:hover {
+	background-color: rgba(96, 165, 250, 0.2);
+}
+
+:root[data-theme="light"] .action-btn:hover {
 	background-color: rgba(96, 165, 250, 0.1);
-	transform: scale(1.05);
 }
 
 .action-btn.danger {
@@ -1650,6 +1796,7 @@ tr.active {
 .action-btn.danger:hover {
 	background-color: rgba(239, 68, 68, 0.2);
 	color: #dc2626;
+	transform: scale(1.08);
 }
 .empty {
 	text-align: center;

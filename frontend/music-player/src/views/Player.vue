@@ -150,54 +150,79 @@ import { api } from '../api.js'
           <table>
             <thead>
               <tr>
-                <th>歌曲名</th>
-                <th>时长</th>
-                <th>歌手/制作人</th>
-                <th>喜爱程度</th>
-                <th>操作</th>
+                <th class="col-play" style="width: 50px;">播放</th>
+                <th class="col-title" style="width: 18%;">歌曲名</th>
+                <th class="col-artist" style="width: 15%;">歌手/制作人</th>
+                <th class="col-album" style="width: 15%;">专辑</th>
+                <th class="col-time" style="width: 80px;">时长</th>
+                <th class="col-fav" style="width: 70px;">收藏</th>
+                <th class="col-upload-audio" style="width: 90px;">上传音频</th>
+                <th class="col-upload-cover" style="width: 90px;">上传封面</th>
+                <th class="col-delete" style="width: 80px;">删除歌曲</th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="({ s, i }, idx) in displayed" :key="i" :class="{ active: currentIndex === i }" @dblclick="playSong(i)">
-                <td class="title-col">
-                  <div class="title-with-play">
-                    <button 
-                      class="play-icon-btn" 
-                      @click.stop="handlePlayButtonClick(i)" 
-                      :title="currentIndex === i && isPlaying ? '暂停' : '播放 ' + (s.name || '歌曲')"
-                      :disabled="!s.url || s.url === ''"
-                    >
-                      {{ currentIndex === i && isPlaying ? '⏸' : '▶' }}
-                    </button>
-                    <span class="song-title-text">{{ s.name || '未知' }}</span>
-                  </div>
+                <td class="play-col">
+                  <button 
+                    class="play-icon-btn" 
+                    @click.stop="handlePlayButtonClick(i)" 
+                    :title="currentIndex === i && isPlaying ? '暂停' : '播放'"
+                    :disabled="!s.url || s.url === ''"
+                  >
+                    {{ currentIndex === i && isPlaying ? '⏸' : '▶' }}
+                  </button>
                 </td>
+                <td class="title-col">
+                  <span class="song-title-text" :title="s.name || '未知'">{{ s.name || '未知' }}</span>
+                </td>
+                <td class="artist-col" :title="s.artist || '—'">{{ s.artist || '—' }}</td>
+                <td class="album-col" :title="s.album || '—'">{{ s.album || '—' }}</td>
                 <td class="time-col">{{ s.duration ? formatTime(s.duration) : '—' }}</td>
-                <td class="artist-col">{{ s.artist || '—' }}</td>
-                <td class="fav-col"><button :class="['fav-btn', { filled: s.fav }]" @click.stop="toggleFav(i)">{{ s.fav ? '❤' : '♡' }}</button></td>
-                <td class="action-col">
-                  <div class="action-buttons">
-                    <button 
-                      v-if="!s.url || s.url === ''" 
-                      class="icon-btn action-btn" 
-                      @click.stop="openUploadAudioModal(i)" 
-                      :title="'上传音频 ' + (s.name || '歌曲')"
-                    >📤</button>
-                    <button 
-                      class="icon-btn action-btn" 
-                      @click.stop="openUploadCoverModal(i)" 
-                      :title="'上传封面 ' + (s.name || '歌曲')"
-                    >🖼️</button>
-                    <button 
-                      class="icon-btn action-btn danger" 
-                      @click.stop="openSongDeleteConfirm(i)" 
-                      :title="'删除 ' + (s.name || '歌曲')"
-                    >🗑</button>
-                  </div>
+                <td class="fav-col">
+                  <button 
+                    :class="['fav-btn', { filled: s.fav }]" 
+                    @click.stop="toggleFav(i)"
+                    :title="s.fav ? '取消收藏' : '添加到收藏'"
+                  >
+                    {{ s.fav ? '❤' : '♡' }}
+                  </button>
+                </td>
+                <td class="upload-audio-col">
+                  <button 
+                    v-if="!s.url || s.url === ''" 
+                    class="icon-btn action-btn tooltip-btn" 
+                    @click.stop="openUploadAudioModal(i)" 
+                    :title="'上传音频文件'"
+                  >
+                    <span class="btn-icon">📤</span>
+                    <span class="tooltip-text">上传音频</span>
+                  </button>
+                  <span v-else class="action-placeholder">—</span>
+                </td>
+                <td class="upload-cover-col">
+                  <button 
+                    class="icon-btn action-btn tooltip-btn" 
+                    @click.stop="openUploadCoverModal(i)" 
+                    :title="'上传封面图片'"
+                  >
+                    <span class="btn-icon">🖼️</span>
+                    <span class="tooltip-text">上传封面</span>
+                  </button>
+                </td>
+                <td class="delete-col">
+                  <button 
+                    class="icon-btn action-btn danger tooltip-btn" 
+                    @click.stop="openSongDeleteConfirm(i)" 
+                    :title="'删除歌曲'"
+                  >
+                    <span class="btn-icon">🗑</span>
+                    <span class="tooltip-text">删除</span>
+                  </button>
                 </td>
               </tr>
               <tr v-if="displayed.length === 0">
-                <td colspan="5" class="empty">暂无歌曲可显示。</td>
+                <td colspan="9" class="empty">暂无歌曲可显示。</td>
               </tr>
             </tbody>
           </table>
