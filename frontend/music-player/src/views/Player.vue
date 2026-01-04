@@ -38,7 +38,6 @@ import { api } from '../api.js'
         <ul class="sidebar-list">
           <li class="side-item web">☁  网页音频提取</li>
           <li class="side-item collection" role="button" tabindex="0" @click="setView('all')" @keydown.enter="setView('all')" :class="{ active: viewMode === 'all' }"><span>🎵单曲集合</span> <span class="count">({{ songList.length }})</span></li>
-          <li class="side-item fav" role="button" tabindex="0" @click="setView('fav')" @keydown.enter="setView('fav')" :class="{ active: viewMode === 'fav' }"><span>❤ 我喜欢的</span> <span class="count">({{ favCount }})</span></li>
 
           <!-- 歌单列表（可展开） -->
           <li class="side-item playlists" role="button" tabindex="0" @click="playlistsOpen = !playlistsOpen">
@@ -1341,6 +1340,7 @@ const login = async () => {
       viewMode.value = 'profile'
       // 登录成功后加载用户数据
       await fetchPlaylists()
+      await loadAllTracks()
     } else {
       authError.value = data.msg || '登录失败'
     }
@@ -1365,6 +1365,7 @@ const register = async () => {
       viewMode.value = 'profile'
       // 注册成功后加载用户数据
       await fetchPlaylists()
+      await loadAllTracks()
     } else {
       authError.value = data.msg || '注册失败'
     }
@@ -1380,8 +1381,9 @@ const fetchUserInfo = async () => {
     const data = await api.getUserInfo()
     if (data && data.code === 200) {
       currentUser.value = data.data
-      // 获取用户信息后加载歌单
+      // 获取用户信息后加载歌单和所有歌曲
       await fetchPlaylists()
+      await loadAllTracks()
       viewMode.value = 'profile'
     } else {
       setToken('')
@@ -1408,10 +1410,14 @@ const logout = async () => {
 
 // 视图控制
 const viewMode = ref('all')
-const setView = (mode) => { 
+const setView = async (mode) => { 
   viewMode.value = mode 
   if (mode === 'all' || mode === 'fav') {
     selectedPlaylistId.value = null
+    // 切换到单曲集合视图时，加载所有歌曲
+    if (mode === 'all' && token.value) {
+      await loadAllTracks()
+    }
   }
 }
 
@@ -1536,6 +1542,40 @@ const handleFileUpload = async (e) => {
       console.error(`【${title}】上传失败:`, err)
       showToast(`歌曲【${title}】上传失败: ` + (err.message || '未知错误'), 'error')
     }
+  }
+}
+
+// 加载当前用户的所有歌曲（单曲集合）
+const loadAllTracks = async () => {
+  try {
+    const data = await api.getAllTracks()
+    if (data.code === 200 && Array.isArray(data.data)) {
+      // 保存现有的fav状态
+      const favMap = new Map()
+      songList.value.forEach(song => {
+        if (song.fav) {
+          favMap.set(song.id, true)
+        }
+      })
+      // 清空现有歌曲列表，重新加载所有歌曲
+      songList.value = []
+      //遍历后端返回的每首歌曲，完整同步到前端
+      for (const track of data.data) {
+        songList.value.push({
+          id: track.id,
+          name: track.title,
+          artist: track.artist,
+          album: track.album,
+          url: track.filePath, //核心：绑定播放URL，解决无法播放
+          duration: track.duration || 0,
+          coverUrl: track.coverUrl,
+          fav: favMap.get(track.id) || false // 保留原有的fav状态
+        })
+      }
+    }
+  } catch (err) {
+    console.error('加载所有歌曲失败:', err)
+    showToast('加载歌曲失败，请刷新重试', 'error')
   }
 }
 
@@ -1927,6 +1967,10 @@ const confirmAddToPlaylists = async () => {
       // 如果当前在查看某个歌单，且该歌单在选中列表中，刷新歌单内容
       if (selectedPlaylistId.value && selectedPlaylistIds.value.includes(selectedPlaylistId.value)) {
         await loadPlaylistTracks(selectedPlaylistId.value)
+      }
+      // 如果当前在单曲集合视图，也刷新单曲集合
+      if (viewMode.value === 'all') {
+        await loadAllTracks()
       }
       // 刷新歌单列表（更新歌曲数量）
       await fetchPlaylists()
@@ -2461,6 +2505,10 @@ const confirmAddTrack = async () => {
     if (data.code === 200) {
       // 重新加载歌单歌曲列表
       await loadPlaylistTracks(selectedPlaylistId.value)
+      // 如果当前在单曲集合视图，也刷新单曲集合
+      if (viewMode.value === 'all') {
+        await loadAllTracks()
+      }
       
       // 如果用户上传了封面文件，尝试上传封面
       if (newTrackForm.value.coverFile) {

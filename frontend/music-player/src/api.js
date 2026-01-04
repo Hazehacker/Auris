@@ -154,6 +154,13 @@ export const api = {
     })
   },
 
+  // 接口21：获取当前用户的所有歌曲（单曲集合）
+  getAllTracks() {
+    return this.request('/user/track/all', {
+      method: 'GET'
+    })
+  },
+
   // 接口11：向歌单添加歌曲
   addTrackToPlaylist(data) {
     const formData = new FormData()

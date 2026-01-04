@@ -27,4 +27,10 @@ public interface ITrackService {
     void validateTrackExists(Long id);
 
     void updateTrack(Long id, UpdateTrackDTO updateTrackDTO);
+
+    /**
+     * 获取当前用户的所有歌曲
+     * @return
+     */
+    List<Track> getAllTracksByCurrentUser();
 }

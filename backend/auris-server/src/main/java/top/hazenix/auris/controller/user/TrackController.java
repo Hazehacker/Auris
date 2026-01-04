@@ -194,4 +194,17 @@ public class TrackController {
         return Result.success();
     }
 
+    /**
+     * @description: 获取当前用户的所有歌曲（单曲集合）
+     * @version: 1.0.0
+     * @return
+     */
+    @GetMapping("/all")
+    @ApiOperation("获取当前用户的所有歌曲")
+    public Result getAllTracks() {
+        log.info("获取当前用户的所有歌曲");
+        List<Track> list = trackService.getAllTracksByCurrentUser();
+        return Result.success(list);
+    }
+
 }

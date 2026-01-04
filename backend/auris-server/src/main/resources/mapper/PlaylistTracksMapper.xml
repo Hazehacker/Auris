@@ -31,4 +31,14 @@
         from playlist_tracks
         where playlist_id = #{playlistId}
     </select>
+
+    <select id="listTracksByUserId" resultType="top.hazenix.auris.entity.Track">
+        select distinct t.id, t.title, t.artist, t.album, t.duration,
+               t.file_path, t.cover_url, t.source_type, t.create_time
+        from track t
+        inner join playlist_tracks pt on t.id = pt.track_id
+        inner join playlist p on pt.playlist_id = p.id
+        where p.user_id = #{userId}
+        order by t.create_time desc
+    </select>
 </mapper>

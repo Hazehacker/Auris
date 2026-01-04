@@ -38,4 +38,11 @@ public interface PlaylistTracksMapper extends BaseMapper<PlaylistTracks> {
      * @return
      */
     Integer getMaxOrderIndexByPlaylistId(@Param("playlistId") Long playlistId);
+
+    /**
+     * 根据用户ID获取该用户的所有歌曲（去重）
+     * @param userId
+     * @return
+     */
+    List<Track> listTracksByUserId(@Param("userId") Long userId);
 }

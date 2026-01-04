@@ -252,4 +252,12 @@ public class TrackServiceImpl implements ITrackService {
         log.info("更新歌曲信息，歌曲ID：{}，更新内容：{}", id, updateTrackDTO);
     }
 
+    @Override
+    public List<Track> getAllTracksByCurrentUser() {
+        Long userId = BaseContext.getCurrentId();
+        log.info("获取当前用户的所有歌曲，用户ID：{}", userId);
+        List<Track> list = playlistTracksMapper.listTracksByUserId(userId);
+        return list;
+    }
+
 }
