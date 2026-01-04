@@ -156,6 +156,7 @@ import { api } from '../api.js'
                 <th class="col-album" style="width: 15%;">专辑</th>
                 <th class="col-time" style="width: 80px;">时长</th>
                 <th class="col-fav" style="width: 70px;">收藏</th>
+                <th class="col-add-to" style="width: 90px;">添加到</th>
                 <th class="col-upload-audio" style="width: 90px;">上传音频</th>
                 <th class="col-upload-cover" style="width: 90px;">上传封面</th>
                 <th class="col-delete" style="width: 80px;">删除歌曲</th>
@@ -186,6 +187,17 @@ import { api } from '../api.js'
                     :title="s.fav ? '取消收藏' : '添加到收藏'"
                   >
                     {{ s.fav ? '❤' : '♡' }}
+                  </button>
+                </td>
+                <td class="add-to-col">
+                  <button 
+                    class="icon-btn action-btn tooltip-btn" 
+                    @click.stop="openAddToPlaylistModal(i)"
+                    :title="'添加到歌单'"
+                    :disabled="!s.id"
+                  >
+                    <span class="btn-icon">➕</span>
+                    <span class="tooltip-text">添加到</span>
                   </button>
                 </td>
                 <td class="upload-audio-col">
@@ -222,7 +234,7 @@ import { api } from '../api.js'
                 </td>
               </tr>
               <tr v-if="displayed.length === 0">
-                <td colspan="9" class="empty">暂无歌曲可显示。</td>
+                <td colspan="10" class="empty">暂无歌曲可显示。</td>
               </tr>
             </tbody>
           </table>
@@ -906,6 +918,49 @@ import { api } from '../api.js'
             <button class="btn green" @click="confirmCreatePlaylist" :disabled="creatingPlaylist">
               <span v-if="creatingPlaylist">创建中...</span>
               <span v-else>创建</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 添加到歌单模态 -->
+    <div v-if="addToPlaylistModalOpen" class="modal-overlay" @click.self="closeAddToPlaylistModal">
+      <div class="modal add-to-playlist-modal">
+        <div class="modal-header">
+          <h3>添加到</h3>
+          <button class="modal-close-btn" @click="closeAddToPlaylistModal">×</button>
+        </div>
+        <div class="add-to-playlist-content">
+          <!-- 新建歌单选项 -->
+          <div class="playlist-option" @click="handleCreateNewPlaylistFromAdd">
+            <div class="playlist-option-icon">➕</div>
+            <div class="playlist-option-text">新建歌单</div>
+          </div>
+          
+          <!-- 现有歌单列表 -->
+          <div v-if="playlists.length > 0" class="playlist-list">
+            <div 
+              v-for="pl in playlists" 
+              :key="pl.id" 
+              class="playlist-option"
+              :class="{ selected: selectedPlaylistIds.includes(pl.id) }"
+              @click="togglePlaylistSelection(pl.id)"
+            >
+              <div class="playlist-option-icon">💿</div>
+              <div class="playlist-option-text">{{ pl.name }}</div>
+              <div class="playlist-option-check" v-if="selectedPlaylistIds.includes(pl.id)">✓</div>
+            </div>
+          </div>
+          <div v-else class="empty-playlist-note">暂无歌单，请先创建歌单</div>
+          
+          <div class="form-error" v-if="addToPlaylistError">{{ addToPlaylistError }}</div>
+          
+          <div class="modal-actions">
+            <button class="btn green-outline" @click="closeAddToPlaylistModal" :disabled="addingToPlaylists">取消</button>
+            <button class="btn green" @click="confirmAddToPlaylists" :disabled="addingToPlaylists || selectedPlaylistIds.length === 0">
+              <span v-if="addingToPlaylists">添加中...</span>
+              <span v-else>确定</span>
             </button>
           </div>
         </div>
@@ -1704,6 +1759,13 @@ const newPlaylistForm = ref({ name: '', desc: '' })
 const createPlaylistError = ref({ name: '', general: '' })
 const playlistNameInput = ref(null)
 
+// 添加到歌单相关状态
+const addToPlaylistModalOpen = ref(false)
+const addingToPlaylists = ref(false)
+const addToPlaylistError = ref('')
+const selectedTrackIndex = ref(null)
+const selectedPlaylistIds = ref([])
+
 // 打开创建歌单模态
 const openCreatePlaylistModal = () => {
   if (!token.value) {
@@ -1769,6 +1831,14 @@ const confirmCreatePlaylist = async () => {
       const newPlaylist = playlists.value.find(p => p.name === name)
       if (newPlaylist) {
         selectPlaylist(newPlaylist.id)
+        // 如果是从"添加到歌单"模态中创建的，自动选中该歌单并添加歌曲
+        if (selectedTrackIndex.value !== null) {
+          selectedPlaylistIds.value = [newPlaylist.id]
+          // 延迟一下，确保模态框状态正确
+          nextTick(() => {
+            addToPlaylistModalOpen.value = true
+          })
+        }
       }
       // 关闭模态
       createPlaylistModalOpen.value = false
@@ -1786,6 +1856,93 @@ const confirmCreatePlaylist = async () => {
 
 // 保持向后兼容：createPlaylist 现在打开模态
 const createPlaylist = openCreatePlaylistModal
+
+// 打开添加到歌单模态
+const openAddToPlaylistModal = (songIndex) => {
+  if (!token.value) {
+    alert('请先登录')
+    openAuth('login')
+    return
+  }
+  const song = songList.value[songIndex]
+  if (!song || !song.id) {
+    showToast('该歌曲无法添加到歌单', 'error')
+    return
+  }
+  selectedTrackIndex.value = songIndex
+  selectedPlaylistIds.value = []
+  addToPlaylistError.value = ''
+  addToPlaylistModalOpen.value = true
+}
+
+// 关闭添加到歌单模态
+const closeAddToPlaylistModal = () => {
+  if (addingToPlaylists.value) return
+  addToPlaylistModalOpen.value = false
+  selectedTrackIndex.value = null
+  selectedPlaylistIds.value = []
+  addToPlaylistError.value = ''
+}
+
+// 切换歌单选择状态
+const togglePlaylistSelection = (playlistId) => {
+  const index = selectedPlaylistIds.value.indexOf(playlistId)
+  if (index > -1) {
+    selectedPlaylistIds.value.splice(index, 1)
+  } else {
+    selectedPlaylistIds.value.push(playlistId)
+  }
+}
+
+// 从添加到歌单模态中创建新歌单
+const handleCreateNewPlaylistFromAdd = () => {
+  closeAddToPlaylistModal()
+  openCreatePlaylistModal()
+}
+
+// 确认添加到歌单
+const confirmAddToPlaylists = async () => {
+  if (selectedTrackIndex.value === null) {
+    addToPlaylistError.value = '请选择要添加的歌曲'
+    return
+  }
+  
+  const song = songList.value[selectedTrackIndex.value]
+  if (!song || !song.id) {
+    addToPlaylistError.value = '歌曲信息无效'
+    return
+  }
+  
+  if (selectedPlaylistIds.value.length === 0) {
+    addToPlaylistError.value = '请至少选择一个歌单'
+    return
+  }
+  
+  addingToPlaylists.value = true
+  addToPlaylistError.value = ''
+  
+  try {
+    const data = await api.addTrackToPlaylists(song.id, selectedPlaylistIds.value)
+    
+    if (data.code === 200) {
+      showToast(`已成功添加到 ${selectedPlaylistIds.value.length} 个歌单`, 'success')
+      // 如果当前在查看某个歌单，且该歌单在选中列表中，刷新歌单内容
+      if (selectedPlaylistId.value && selectedPlaylistIds.value.includes(selectedPlaylistId.value)) {
+        await loadPlaylistTracks(selectedPlaylistId.value)
+      }
+      // 刷新歌单列表（更新歌曲数量）
+      await fetchPlaylists()
+      closeAddToPlaylistModal()
+    } else {
+      addToPlaylistError.value = data.msg || '添加失败，请重试'
+    }
+  } catch (err) {
+    console.error('添加到歌单失败', err)
+    addToPlaylistError.value = err.message || '网络错误，请重试'
+  } finally {
+    addingToPlaylists.value = false
+  }
+}
 
 // 添加歌曲相关状态
 const addTrackModalOpen = ref(false)
@@ -3151,6 +3308,142 @@ const saveProfile = async () => {
 };
 
 </script>
+
+<style scoped>
+/* 添加到歌单模态框样式 */
+.add-to-playlist-modal {
+  max-width: 400px;
+  width: 90%;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.modal-close-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.modal-close-btn:hover {
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.add-to-playlist-content {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.playlist-option {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  margin-bottom: 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid transparent;
+  background-color: var(--bg-secondary);
+}
+
+.playlist-option:hover {
+  background-color: var(--bg-tertiary);
+  border-color: var(--border-hover);
+}
+
+.playlist-option.selected {
+  background-color: rgba(96, 165, 250, 0.1);
+  border-color: var(--primary);
+}
+
+.playlist-option-icon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  margin-right: 12px;
+  background-color: var(--bg-tertiary);
+  border-radius: 6px;
+}
+
+.playlist-option.selected .playlist-option-icon {
+  background-color: rgba(96, 165, 250, 0.2);
+}
+
+.playlist-option-text {
+  flex: 1;
+  font-size: 14px;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.playlist-option-check {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary);
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.empty-playlist-note {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.playlist-list {
+  margin: 16px 0;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .add-to-playlist-modal {
+    width: 95%;
+    max-width: none;
+  }
+  
+  .playlist-option {
+    padding: 10px 12px;
+  }
+  
+  .playlist-option-icon {
+    width: 28px;
+    height: 28px;
+    font-size: 16px;
+    margin-right: 10px;
+  }
+}
+</style>
 
 
 

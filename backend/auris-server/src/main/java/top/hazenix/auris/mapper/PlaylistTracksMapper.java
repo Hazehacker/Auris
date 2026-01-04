@@ -2,6 +2,7 @@ package top.hazenix.auris.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 import top.hazenix.auris.entity.PlaylistTracks;
 import top.hazenix.auris.entity.Track;
 
@@ -29,12 +30,12 @@ public interface PlaylistTracksMapper extends BaseMapper<PlaylistTracks> {
      * @param trackId
      * @return
      */
-    PlaylistTracks findByPlaylistIdAndTrackId(Long playlistId, Long trackId);
+    PlaylistTracks findByPlaylistIdAndTrackId(@Param("playlistId") Long playlistId, @Param("trackId") Long trackId);
 
     /**
      * 获取歌单中最大的orderIndex
      * @param playlistId
      * @return
      */
-    Integer getMaxOrderIndexByPlaylistId(Long playlistId);
+    Integer getMaxOrderIndexByPlaylistId(@Param("playlistId") Long playlistId);
 }

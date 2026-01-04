@@ -133,6 +133,18 @@ export const api = {
     })
   },
 
+  // 接口10：添加歌曲到多个歌单
+  addTrackToPlaylists(trackId, playlistIds) {
+    return this.request('/user/playlist/tracks', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        trackId: trackId,
+        playlistIds: playlistIds
+      })
+    })
+  },
+
   // ========== 音乐相关接口 ==========
 
   // 接口10：根据歌单id获取歌曲列表
