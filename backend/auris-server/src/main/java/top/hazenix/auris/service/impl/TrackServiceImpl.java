@@ -260,4 +260,29 @@ public class TrackServiceImpl implements ITrackService {
         return list;
     }
 
+    @Override
+    @Transactional
+    public void deleteTrackCompletely(Long trackId) {
+        // 参数校验
+        if (trackId == null || trackId <= 0) {
+            throw new RuntimeException("歌曲ID不能为空或无效");
+        }
+        
+        // 验证歌曲是否存在
+        Track track = trackMapper.selectById(trackId);
+        if (track == null) {
+            throw new RuntimeException(MessageConstant.TRACK_NOT_EXIST);
+        }
+        
+        // 删除该歌曲在所有歌单中的关联
+        QueryWrapper<PlaylistTracks> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("track_id", trackId);
+        playlistTracksMapper.delete(queryWrapper);
+        log.info("已删除歌曲ID：{} 在所有歌单中的关联", trackId);
+        
+        // 删除歌曲本身
+        trackMapper.deleteById(trackId);
+        log.info("已删除歌曲ID：{}", trackId);
+    }
+
 }

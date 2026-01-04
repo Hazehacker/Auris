@@ -583,7 +583,15 @@ import { api } from '../api.js'
     <div v-if="songDeleteConfirmOpen" class="modal-overlay" @click.self="songDeleteConfirmOpen = false">
       <div class="modal">
         <h3>确认删除歌曲？</h3>
-        <p class="muted">删除后将从歌单中移除，且无法恢复</p>
+        <template v-if="viewMode === 'all'">
+          <p class="muted">确定要删除歌曲"<strong>{{ songList[songDeleteIndex]?.name || '未知' }}</strong>"吗？</p>
+          <p class="muted" style="font-size: 0.85rem; margin-top: 0.5rem; color: #ef4444;">
+            ⚠️ 警告：此操作将永久删除该歌曲，并从所有歌单中移除，且无法恢复！
+          </p>
+        </template>
+        <template v-else>
+          <p class="muted">删除后将从歌单中移除，且无法恢复</p>
+        </template>
         <div class="modal-actions">
           <button class="btn green-outline" @click="songDeleteConfirmOpen = false">取消</button>
           <button class="btn danger" @click="confirmDeleteSong">确认删除</button>
@@ -2679,7 +2687,7 @@ const openSongDeleteConfirm = (idx) => {
   songDeleteConfirmOpen.value = true
 }
 
-// 从歌单中删除歌曲
+// 删除歌曲（根据视图模式选择不同的删除方式）
 const confirmDeleteSong = async () => {
   const idx = songDeleteIndex.value
   if (idx === null || idx === undefined) {
@@ -2701,35 +2709,71 @@ const confirmDeleteSong = async () => {
     return;
   }
 
-  // 检查是否在歌单视图中
-  if (viewMode.value !== 'playlist' || !selectedPlaylistId.value) {
-    alert('请先选择要删除歌曲的歌单！');
-    songDeleteConfirmOpen.value = false;
-    return;
-  }
-
   try {
-    // 使用原本的接口：从歌单中移除歌曲
-    const delRes = await api.removeTrackFromPlaylist(selectedPlaylistId.value, song.id);
-    if (delRes.code !== 200) {
-      throw new Error(delRes.msg || '歌曲删除失败');
+    // 根据视图模式选择不同的删除方式
+    if (viewMode.value === 'all') {
+      // 单曲集合视图：使用完全删除接口（删除歌曲本身及所有歌单关联）
+      const delRes = await api.deleteTrackCompletely(song.id);
+      if (delRes.code !== 200) {
+        throw new Error(delRes.msg || '歌曲删除失败');
+      }
+
+      // 刷新单曲集合数据
+      await loadAllTracks();
+      
+      // 如果还有其他歌单视图打开，也刷新歌单数据（确保数据同步）
+      if (selectedPlaylistId.value) {
+        await loadPlaylistTracks(selectedPlaylistId.value);
+      }
+
+      // 处理播放状态重置（如果删除的是当前播放的歌曲）
+      if (currentIndex.value === idx) {
+        audio.value.pause();
+        currentIndex.value = -1;
+        audio.value.src = '';
+        isPlaying.value = false;
+        currentTime.value = 0;
+        audioDuration.value = 0;
+        parsedLrc.value = []; // 清空歌词
+      }
+
+      showToast(`歌曲《${song.name}》已完全删除（已从所有歌单中移除）！`, 'success');
+    } else if (viewMode.value === 'playlist') {
+      // 歌单视图：从歌单中移除歌曲（不删除歌曲本身）
+      if (!selectedPlaylistId.value) {
+        alert('请先选择要删除歌曲的歌单！');
+        songDeleteConfirmOpen.value = false;
+        return;
+      }
+
+      const delRes = await api.removeTrackFromPlaylist(selectedPlaylistId.value, song.id);
+      if (delRes.code !== 200) {
+        throw new Error(delRes.msg || '歌曲删除失败');
+      }
+
+      // 刷新歌单数据
+      await loadPlaylistTracks(selectedPlaylistId.value);
+      
+      // 同时刷新单曲集合数据（确保数据同步）
+      await loadAllTracks();
+
+      // 处理播放状态重置（如果删除的是当前播放的歌曲）
+      if (currentIndex.value === idx) {
+        audio.value.pause();
+        currentIndex.value = -1;
+        audio.value.src = '';
+        isPlaying.value = false;
+        currentTime.value = 0;
+        audioDuration.value = 0;
+        parsedLrc.value = []; // 清空歌词
+      }
+
+      showToast(`歌曲《${song.name}》已从歌单中删除！`, 'success');
+    } else {
+      alert('当前视图不支持删除操作');
+      songDeleteConfirmOpen.value = false;
+      return;
     }
-
-    // 刷新歌单数据
-    await loadPlaylistTracks(selectedPlaylistId.value);
-
-    // 处理播放状态重置（如果删除的是当前播放的歌曲）
-    if (currentIndex.value === idx) {
-      audio.value.pause();
-      currentIndex.value = -1;
-      audio.value.src = '';
-      isPlaying.value = false;
-      currentTime.value = 0;
-      audioDuration.value = 0;
-      parsedLrc.value = []; // 清空歌词
-    }
-
-    showToast(`歌曲《${song.name}》已从歌单中删除！`, 'success');
   } catch (err) {
     console.error('删除歌曲失败', err);
     alert(`删除失败: ${err.message || '网络异常，请重试'}`);

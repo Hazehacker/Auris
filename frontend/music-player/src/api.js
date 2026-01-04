@@ -248,6 +248,13 @@ export const api = {
     })
   },
 
+  // 删除歌曲（删除歌曲本身以及它在所有歌单中的关联）
+  deleteTrackCompletely(trackId) {
+    return this.request(`/user/track/${trackId}`, {
+      method: 'DELETE'
+    })
+  },
+
   // ========== 歌词相关接口 ==========
 
   // 接口16：根据歌曲id获取歌词

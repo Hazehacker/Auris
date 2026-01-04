@@ -207,4 +207,18 @@ public class TrackController {
         return Result.success(list);
     }
 
+    /**
+     * @description: 删除歌曲（删除歌曲本身以及它在所有歌单中的关联）
+     * @param: trackId 歌曲ID
+     * @version: 1.0.0
+     * @return
+     */
+    @DeleteMapping("/{trackId}")
+    @ApiOperation("删除歌曲（删除歌曲本身以及它在所有歌单中的关联）")
+    public Result deleteTrackCompletely(@PathVariable Long trackId) {
+        log.info("删除歌曲（完全删除），歌曲ID：{}", trackId);
+        trackService.deleteTrackCompletely(trackId);
+        return Result.success();
+    }
+
 }

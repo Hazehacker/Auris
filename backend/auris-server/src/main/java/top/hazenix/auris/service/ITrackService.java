@@ -33,4 +33,10 @@ public interface ITrackService {
      * @return
      */
     List<Track> getAllTracksByCurrentUser();
+
+    /**
+     * 删除歌曲（删除歌曲本身以及它在所有歌单中的关联）
+     * @param trackId 歌曲ID
+     */
+    void deleteTrackCompletely(Long trackId);
 }
