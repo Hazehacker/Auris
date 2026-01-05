@@ -169,7 +169,7 @@ import { api } from '../api.js'
                   </button>
                 </td>
                 <td class="title-col">
-                  <span class="song-title-text" :title="s.name || '未知'">{{ s.name || '未知' }}</span>
+                  <span class="song-title-text" :title="s.name || s.title || '未知歌曲'">{{ s.name || s.title || '未知歌曲' }}</span>
                 </td>
                 <td class="artist-col" :title="s.artist || '—'">{{ s.artist || '—' }}</td>
                 <td class="album-col" :title="s.album || '—'">{{ s.album || '—' }}</td>
@@ -240,8 +240,11 @@ import { api } from '../api.js'
     <!-- 底部播放器控制栏 -->
     <footer class="bottom-bar"@click.self="toggleDetail">
       <div class="player-controls">
+        <!-- 小封面：显示当前播放歌曲的封面（回退到默认图） -->
+        <img class="mini-cover" :src="currentSong?.coverUrl || defaultCover" alt="cover" />
         <button class="icon-btn prev-btn" @click="playPrev">◀◀</button>
         <button class="play-btn" :class="{ playing: isPlaying }" @click="togglePlay"></button>
+        <button class="icon-btn next-btn" @click="playNext">▶▶</button>
         <!-- 优化爱心按钮的边界校验逻辑 -->
         <button 
           class="icon-btn fav-toggle" 
@@ -252,7 +255,6 @@ import { api } from '../api.js'
         >
           {{ songList[currentIndex]?.fav ? '❤' : '♡' }}
         </button>
-        <button class="icon-btn next-btn" @click="playNext">▶▶</button>
       </div>
 
       <div class="player-progress">
@@ -433,8 +435,8 @@ import { api } from '../api.js'
                                                 {{ currentSong && currentSong.id === song.id && isPlaying ? '⏸️' : '▶️' }}
                                             </button>
                                         </td>
-                                        <td>{{ song.title }}</td>
-                                        <td>{{ song.artist }}</td>
+                                        <td>{{ song.name || song.title || '未知歌曲' }}</td>
+                                        <td>{{ song.artist || '未知歌手' }}</td>
                                         <td>{{ formatTime(song.duration) }}</td>
                                         <td>
                                             <button class="btn-icon" @click.stop="toggleFavorite(song)">
@@ -477,8 +479,8 @@ import { api } from '../api.js'
                                     class="playlist-song-item">
                                     <div class="song-number">{{ idx + 1 }}</div>
                                     <div class="song-info">
-                                        <div class="song-name">{{ s.name || '未知' }}</div>
-                                        <div class="song-artist">{{ s.artist || '未知' }}</div>
+                                        <div class="song-name">{{ s.name || s.title || '未知歌曲' }}</div>
+                                        <div class="song-artist">{{ s.artist || '未知歌手' }}</div>
                                     </div>
                                     <div class="song-duration">{{ s.duration ? formatTime(s.duration) : '—' }}</div>
                                 </li>
@@ -489,7 +491,7 @@ import { api } from '../api.js'
                         <main class="detail-right">
                             <!-- 歌曲信息 -->
                             <div class="song-info-header">
-                                <h2 class="song-title">{{ currentSong?.name || '未知歌曲' }}</h2>
+                                <h2 class="song-title">{{ currentSong?.name || currentSong?.title || '未知歌曲' }}</h2>
                                 <p class="song-artist">{{ currentSong?.artist || '未知歌手' }}</p>
                             </div>
                             <!-- 滚动歌词 -->
@@ -519,6 +521,7 @@ import { api } from '../api.js'
                             <div class="player-controls">
                                 <button class="icon-btn prev-btn" @click="playPrev">◀◀</button>
                                 <button class="play-btn" :class="{ playing: isPlaying }" @click="togglePlay"></button>
+                                <button class="icon-btn next-btn" @click="playNext">▶▶</button>
                                 <button class="icon-btn fav-toggle"
                                         :class="{ filled: songList[currentIndex]?.fav }"
                                         @click="toggleCurrentFav"
@@ -526,7 +529,6 @@ import { api } from '../api.js'
                                         :title="songList[currentIndex]?.fav ? '取消喜欢' : '添加到我喜欢'">
                                     {{ songList[currentIndex]?.fav ? '❤' : '♡' }}
                                 </button>
-                                <button class="icon-btn next-btn" @click="playNext">▶▶</button>
                             </div>
 
                             <div class="player-progress">
@@ -660,7 +662,7 @@ import { api } from '../api.js'
               </div>
               <div class="info-item">
                 <span class="info-label">歌手：</span>
-                <span class="info-value">{{ uploadCoverSong?.artist || '未知' }}</span>
+                <span class="info-value">{{ uploadCoverSong?.artist || '未知歌手' }}</span>
               </div>
             </div>
           </div>
@@ -725,11 +727,11 @@ import { api } from '../api.js'
             <div class="song-info-display">
               <div class="info-item">
                 <span class="info-label">歌曲名称：</span>
-                <span class="info-value">{{ uploadAudioSong?.name || '未知' }}</span>
+                <span class="info-value">{{ uploadAudioSong?.name || uploadAudioSong?.title || '未知歌曲' }}</span>
               </div>
               <div class="info-item">
                 <span class="info-label">歌手：</span>
-                <span class="info-value">{{ uploadAudioSong?.artist || '未知' }}</span>
+                <span class="info-value">{{ uploadAudioSong?.artist || '未知歌手' }}</span>
               </div>
             </div>
           </div>
@@ -1065,6 +1067,11 @@ const currentTime = ref(0)
 const audioVolume = ref(0.7)
 const isMuted = ref(false)
 const prevVolume = ref(audioVolume.value)
+// 当前选中播放的歌曲（computed 同步 songList 与 currentIndex）
+const currentSong = computed(() => {
+  if (currentIndex.value === -1) return null
+  return songList.value[currentIndex.value] || null
+})
 // 音量滑块显示控制
 const showVolSlider = ref(false)
 // 悬浮延迟定时器
@@ -1577,6 +1584,11 @@ const loadAllTracks = async () => {
           coverUrl: track.coverUrl,
           fav: favMap.get(track.id) || false // 保留原有的fav状态
         })
+        // 如果后端没有提供时长但存在播放地址，尝试从音频文件加载元数据获取时长并更新
+        const newIdx = songList.value.length - 1
+        if ((!track.duration || track.duration === 0) && track.filePath) {
+          fetchAndSetDurationForSong(newIdx)
+        }
       }
     }
   } catch (err) {
@@ -1609,6 +1621,10 @@ const loadPlaylistTracks = async (playlistId) => {
               fav: false
             })
             songIndex = songList.value.length - 1
+            // 后端无时长时，尝试通过音频文件元数据补全
+            if ((!track.duration || track.duration === 0) && track.filePath) {
+              fetchAndSetDurationForSong(songIndex)
+            }
           } else {
             //更新已有歌曲的URL和信息，确保播放正常
             songList.value[songIndex] = {
@@ -1620,6 +1636,10 @@ const loadPlaylistTracks = async (playlistId) => {
               duration: track.duration || songList.value[songIndex].duration,
               coverUrl: track.coverUrl || songList.value[songIndex].coverUrl
             }
+            // 如果更新后仍缺失时长且有 URL，尝试加载元数据获取时长
+            if ((!track.duration || track.duration === 0) && songList.value[songIndex].url) {
+              fetchAndSetDurationForSong(songIndex)
+            }
           }
           trackIndices.push(songIndex)
         }
@@ -1629,6 +1649,29 @@ const loadPlaylistTracks = async (playlistId) => {
   } catch (err) {
     console.error('加载歌单歌曲失败:', err)
     alert('加载歌曲失败，请刷新重试')
+  }
+}
+
+// 当后端未提供时长时，从音频文件的 metadata 中加载时长并更新对应 songList 条目（秒）
+const fetchAndSetDurationForSong = (songIndex) => {
+  const s = songList.value[songIndex]
+  if (!s || !s.url) return
+  try {
+    const a = new Audio()
+    a.preload = 'metadata'
+    a.crossOrigin = 'anonymous'
+    a.src = s.url
+    a.onloadedmetadata = () => {
+      const d = Math.floor(a.duration) || 0
+      if (d > 0) {
+        songList.value[songIndex].duration = d
+      }
+      // 释放资源
+      a.src = ''
+    }
+    a.onerror = () => { a.src = '' }
+  } catch (e) {
+    console.warn('加载音频元数据失败', e)
   }
 }
 
@@ -3021,20 +3064,27 @@ const displayed = computed(() => {
 })
 
 // 播放控制相关（核心修复：完善URL校验+友好提示+异常捕获）
-const playSong = (i) => {
-  if (!songList.value.length || i < 0 || i >= songList.value.length) return
-  const song = songList.value[i]
+const playSong = (iOrSong) => {
+  if (!songList.value.length) return
+  // 支持两种调用方式：索引或歌曲对象
+  let idx = typeof iOrSong === 'number' ? iOrSong : -1
+  if (typeof iOrSong === 'object') {
+    idx = songList.value.findIndex(s => s && s.id === (iOrSong.id || iOrSong))
+    if (idx === -1) return
+  }
+  if (idx < 0 || idx >= songList.value.length) return
+  const song = songList.value[idx]
   
   // 严格校验URL，给出明确提示
   if (!song || !song.url || song.url === '' || song.url === null) {
-    const tip = `歌曲《${song.name || '未知歌曲'}》暂无播放地址，请先上传音频！`
+    const tip = `歌曲《${song.name || song.title || '未知歌曲'}》暂无播放地址，请先上传音频！`
     console.warn(tip)
     alert(tip)
     return
   }
   
   //  完整的播放链路，确保播放状态同步
-  currentIndex.value = i
+  currentIndex.value = idx
   audio.value.src = song.url
   currentTime.value = 0
   audioDuration.value = 0
@@ -3060,6 +3110,18 @@ const handlePlayButtonClick = (i) => {
   } else {
     // 否则切换播放新歌曲
     playSong(i)
+  }
+}
+
+// 在列表（例如收藏）中，传入 song 对象时的播放/切换逻辑
+const togglePlayPause = (song) => {
+  if (!song || !song.id) return
+  const idx = songList.value.findIndex(s => s && s.id === song.id)
+  if (idx === -1) return
+  if (currentIndex.value === idx) {
+    togglePlay()
+  } else {
+    playSong(idx)
   }
 }
 
