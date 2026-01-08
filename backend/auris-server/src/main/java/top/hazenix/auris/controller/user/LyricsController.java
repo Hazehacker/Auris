@@ -10,7 +10,7 @@ import top.hazenix.auris.result.Result;
 import top.hazenix.auris.service.ILyricsService;
 
 /**
- * @description: 歌单管理相关接口
+ * @description: 歌词管理相关接口
  * @author: Hazenix
  * @version: 1.0.0
  * @date: 2025/12/26

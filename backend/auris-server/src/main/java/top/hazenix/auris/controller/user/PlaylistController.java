@@ -97,9 +97,4 @@ public class PlaylistController {
         playlistService.addTrackToPlaylists(addTrackToPlaylistsDTO);
         return Result.success();
     }
-
-
-
-
-
 }

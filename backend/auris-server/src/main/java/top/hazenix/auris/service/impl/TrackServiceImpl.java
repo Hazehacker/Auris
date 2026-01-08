@@ -11,8 +11,10 @@ import org.springframework.web.multipart.MultipartFile;
 import top.hazenix.auris.constant.MessageConstant;
 import top.hazenix.auris.context.BaseContext;
 import top.hazenix.auris.dto.UpdateTrackDTO;
+import top.hazenix.auris.entity.Playlist;
 import top.hazenix.auris.entity.PlaylistTracks;
 import top.hazenix.auris.entity.Track;
+import top.hazenix.auris.mapper.PlaylistMapper;
 import top.hazenix.auris.mapper.PlaylistTracksMapper;
 import top.hazenix.auris.mapper.TrackMapper;
 import top.hazenix.auris.query.TrackQuery;
@@ -32,15 +34,21 @@ public class TrackServiceImpl implements ITrackService {
     private final AliOssUtil aliOssUtil;
     private final TrackMapper trackMapper;
     private final PlaylistTracksMapper playlistTracksMapper;
+    private final PlaylistMapper playlistMapper;
 
     @Override
     public List<Track> getTrackByPlaylistId(Long id) {
+        // 验证歌单是否属于当前用户
+        validatePlaylistOwnership(id);
         List<Track> list = playlistTracksMapper.listTracksByPlaylistId(id);
         return list;
     }
 
     @Override
     public String uploadCover(Long id, MultipartFile file) {
+        // 验证歌曲是否属于当前用户
+        validateTrackOwnership(id);
+        
         //参数校验-健壮性
         if (file == null) {
             throw new RuntimeException(MessageConstant.FILE_NOT_EXIST);
@@ -72,6 +80,9 @@ public class TrackServiceImpl implements ITrackService {
 
     @Override
     public String uploadAudio(Long id, MultipartFile file) {
+        // 验证歌曲是否属于当前用户
+        validateTrackOwnership(id);
+        
         // 参数校验-健壮性
         if (file == null) {
             throw new RuntimeException(MessageConstant.FILE_NOT_EXIST);
@@ -110,6 +121,9 @@ public class TrackServiceImpl implements ITrackService {
     @Override
     @Transactional
     public String addTrack(TrackQuery trackQuery, MultipartFile file) {
+        // 验证歌单是否属于当前用户
+        validatePlaylistOwnership(trackQuery.getPlaylistId());
+        
         Track track = Track.builder()
                 .title(trackQuery.getTitle())
                 .artist(trackQuery.getArtist())
@@ -152,7 +166,9 @@ public class TrackServiceImpl implements ITrackService {
     @Override
     @Transactional
     public void removeTrack(Long id, Long trackId) {
-        // 硬删除
+        // 验证歌单是否属于当前用户
+        validatePlaylistOwnership(id);
+        
         QueryWrapper<PlaylistTracks> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("playlist_id",id);
         queryWrapper.eq("track_id",trackId);
@@ -162,6 +178,9 @@ public class TrackServiceImpl implements ITrackService {
 
     @Override
     public void updateTrackSort(Long id, List<Long> ids) {
+        // 验证歌单是否属于当前用户
+        validatePlaylistOwnership(id);
+        
         QueryWrapper<PlaylistTracks> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("playlist_id", id);
         Long cnt = playlistTracksMapper.selectCount(queryWrapper);
@@ -179,9 +198,6 @@ public class TrackServiceImpl implements ITrackService {
             updateWrapper.eq("track_id", playlistTracks.getTrackId());
             playlistTracksMapper.update(playlistTracks, updateWrapper);
         }
-
-
-
     }
 
     @Override
@@ -203,6 +219,9 @@ public class TrackServiceImpl implements ITrackService {
 
     @Override
     public void updateTrack(Long id, UpdateTrackDTO updateTrackDTO) {
+        // 验证歌曲是否属于当前用户
+        validateTrackOwnership(id);
+        
         // 参数校验
         if (id == null || id <= 0) {
             throw new RuntimeException("歌曲ID不能为空或无效");
@@ -268,6 +287,9 @@ public class TrackServiceImpl implements ITrackService {
             throw new RuntimeException("歌曲ID不能为空或无效");
         }
         
+        // 验证歌曲是否属于当前用户
+        validateTrackOwnership(trackId);
+        
         // 验证歌曲是否存在
         Track track = trackMapper.selectById(trackId);
         if (track == null) {
@@ -284,5 +306,61 @@ public class TrackServiceImpl implements ITrackService {
         trackMapper.deleteById(trackId);
         log.info("已删除歌曲ID：{}", trackId);
     }
-
+    
+    /**
+     * 验证歌单是否属于当前用户
+     * @param playlistId 歌单ID
+     */
+    private void validatePlaylistOwnership(Long playlistId) {
+        if (playlistId == null || playlistId <= 0) {
+            throw new RuntimeException("歌单ID不能为空或无效");
+        }
+        
+        // 直接查询歌单并验证其归属
+        Playlist playlist = playlistMapper.selectById(playlistId);
+        if (playlist == null) {
+            throw new RuntimeException("歌单不存在");
+        }
+        
+        Long currentUserId = BaseContext.getCurrentId();
+        if (!playlist.getUserId().equals(currentUserId)) {
+            throw new RuntimeException("无权访问该歌单");
+        }
+    }
+    
+    /**
+     * 验证歌曲是否属于当前用户
+     * @param trackId 歌曲ID
+     */
+    private void validateTrackOwnership(Long trackId) {
+        if (trackId == null || trackId <= 0) {
+            throw new RuntimeException("歌曲ID不能为空或无效");
+        }
+        
+        // 通过playlist_tracks表检查当前用户是否拥有包含该歌曲的歌单
+        QueryWrapper<PlaylistTracks> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("track_id", trackId);
+        List<PlaylistTracks> playlistTracksList = playlistTracksMapper.selectList(queryWrapper);
+        
+        if (playlistTracksList.isEmpty()) {
+            throw new RuntimeException("歌曲不存在或不属于当前用户");
+        }
+        
+        // 检查是否至少有一个歌单属于当前用户
+        boolean userOwnsTrack = false;
+        Long currentUserId = BaseContext.getCurrentId();
+        
+        for (PlaylistTracks pt : playlistTracksList) {
+            Long playlistId = pt.getPlaylistId();
+            Playlist playlist = playlistMapper.selectById(playlistId);
+            if (playlist != null && playlist.getUserId().equals(currentUserId)) {
+                userOwnsTrack = true;
+                break;
+            }
+        }
+        
+        if (!userOwnsTrack) {
+            throw new RuntimeException("无权访问该歌曲");
+        }
+    }
 }

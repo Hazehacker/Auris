@@ -59,6 +59,18 @@ public class PlaylistServiceImpl implements IPlaylistService {
 
     @Override
     public void deletePlaylist(Long id) {
+        // 首先验证歌单是否存在且属于当前用户
+        Playlist existingPlaylist = playlistMapper.selectById(id);
+        if (existingPlaylist == null) {
+            throw new RuntimeException("歌单不存在");
+        }
+        
+        // 验证当前用户是否有权限删除该歌单
+        Long currentUserId = BaseContext.getCurrentId();
+        if (!existingPlaylist.getUserId().equals(currentUserId)) {
+            throw new RuntimeException("无权删除该歌单");
+        }
+
         //如果歌单关联了歌曲，不能删除
         if (trackService.getTrackByPlaylistId(id).size() > 0) {
             throw new RuntimeException(MessageConstant.PLAYLIST_BE_RELATED_BY_TRACK);
@@ -77,6 +89,18 @@ public class PlaylistServiceImpl implements IPlaylistService {
 
     @Override
     public void updatePlaylist(PlaylistQuery playlistQuery) {
+        // 首先验证歌单是否存在且属于当前用户
+        Playlist existingPlaylist = playlistMapper.selectById(playlistQuery.getId());
+        if (existingPlaylist == null) {
+            throw new RuntimeException("歌单不存在");
+        }
+        
+        // 验证当前用户是否有权限修改该歌单
+        Long currentUserId = BaseContext.getCurrentId();
+        if (!existingPlaylist.getUserId().equals(currentUserId)) {
+            throw new RuntimeException("无权修改该歌单");
+        }
+        
         //参数校验
         if (playlistQuery.getSort() < 0) {
             throw new RuntimeException("排序值不能小于0");

@@ -19,9 +19,8 @@ import top.hazenix.auris.service.ILyricsService;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.AccessDeniedException;
-import java.sql.Wrapper;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -32,6 +31,9 @@ public class LyricsServiceImpl implements ILyricsService{
 
     @Override
     public Lyrics getLyrics(Long id) {
+        // 验证歌曲是否属于当前用户
+        validateTrackOwnership(id);
+        
         QueryWrapper<Lyrics> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("track_id", id);
         Lyrics lyrics = lyricsMapper.selectOne(queryWrapper);
@@ -40,21 +42,15 @@ public class LyricsServiceImpl implements ILyricsService{
 
     @Override
     public void addLyrics(Long id, MultipartFile file) {
+        // 验证歌曲是否属于当前用户
+        validateTrackOwnership(id);
+        
         // 参数校验
         if (file == null) {
             throw new RuntimeException(MessageConstant.FILE_NOT_EXIST);
         }
         if (!file.getOriginalFilename().toLowerCase().endsWith(".lrc")) {
             throw new RuntimeException(MessageConstant.LRC_ONLY);
-        }
-
-        // 校验用户是否有权编辑这首歌
-        QueryWrapper<PlaylistTracks> queryWrapper = new QueryWrapper<>();
-        queryWrapper.eq("track_id", id);
-        Long playlistId = playlistTracksMapper.selectOne(queryWrapper).getPlaylistId();
-        Long userId = playlistMapper.selectOne(new LambdaQueryWrapper<Playlist>().eq(Playlist::getId, playlistId)).getUserId();
-        if (!BaseContext.getCurrentId().equals(userId)) {
-            throw new RuntimeException(MessageConstant.NO_AUTH_EDIT);
         }
 
         // file存到数据库
@@ -72,5 +68,41 @@ public class LyricsServiceImpl implements ILyricsService{
                 .createTime(LocalDateTime.now())
                 .build();
         lyricsMapper.insert(lyrics);
+    }
+    
+    /**
+     * 验证歌曲是否属于当前用户
+     * @param trackId 歌曲ID
+     */
+    private void validateTrackOwnership(Long trackId) {
+        if (trackId == null || trackId <= 0) {
+            throw new RuntimeException("歌曲ID不能为空或无效");
+        }
+        
+        // 通过playlist_tracks表检查当前用户是否拥有包含该歌曲的歌单
+        QueryWrapper<PlaylistTracks> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("track_id", trackId);
+        List<PlaylistTracks> playlistTracksList = playlistTracksMapper.selectList(queryWrapper);
+        
+        if (playlistTracksList.isEmpty()) {
+            throw new RuntimeException("歌曲不存在或不属于当前用户");
+        }
+        
+        // 检查是否至少有一个歌单属于当前用户
+        boolean userOwnsTrack = false;
+        Long currentUserId = BaseContext.getCurrentId();
+        
+        for (PlaylistTracks pt : playlistTracksList) {
+            Long playlistId = pt.getPlaylistId();
+            Playlist playlist = playlistMapper.selectById(playlistId);
+            if (playlist != null && playlist.getUserId().equals(currentUserId)) {
+                userOwnsTrack = true;
+                break;
+            }
+        }
+        
+        if (!userOwnsTrack) {
+            throw new RuntimeException("无权访问该歌曲");
+        }
     }
 }
